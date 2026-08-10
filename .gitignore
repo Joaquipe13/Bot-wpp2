@@ -1,0 +1,47 @@
+# Node
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn.lock
+
+# TypeScript build
+*.tsbuildinfo
+
+# VS Code
+.vscode/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de entorno/local
+.env
+.env.local
+
+# Sesiones de WhatsApp (MUY importante)
+.wwebjs_auth/
+
+# Logs
+logs/
+*.log
+
+# database
+bot-database.db
+
+# Tsc-watch
+tsc-watch.log
+
+# Config
+.prettierignore
+.prettierrc
+
+# Web cache
+/.wwebjs_auth
+/.wwebjs_cache
+/session
+
+
+# Scripts solo locales
+/src/convertOpusToOgg.ts
+/dist/convertOpusToOgg.js
+

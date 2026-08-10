@@ -1,0 +1,20 @@
+node_modules
+dist
+.git
+.gitignore
+
+# datos de runtime (se montan como volúmenes)
+session/
+data/
+*.db
+
+# archivos de entorno
+.env
+.env.*
+!.env.example
+
+# logs
+logs/
+
+# herramientas de dev
+*.code-workspace

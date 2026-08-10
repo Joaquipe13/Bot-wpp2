@@ -1,0 +1,18 @@
+services:
+  bot-wpp:
+    build: .
+    image: bot-wpp:latest
+    container_name: bot-wpp
+    restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data       # base de datos SQLite
+      - ./session:/app/session # sesión de WhatsApp (Baileys)
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
