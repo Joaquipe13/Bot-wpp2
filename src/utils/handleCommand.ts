@@ -1,5 +1,5 @@
 import { proto } from '@whiskeysockets/baileys';
-import { audioCommand, pingCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand } from '../commands';
+import { audioCommand, pingCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, TopAntipalaCommand } from '../commands';
 import { TopAntipala } from '../classes';
 
 export type CommandResult =
@@ -27,7 +27,7 @@ export async function handleCommand(
 
 			case "top":
 				try {
-					return { type: 'text', payload: await topAntipala.getTopAntipala(body) };
+					return { type: 'text', payload: await TopAntipalaCommand(body) };
 				} catch (err: any) {
 					throw new Error(err.message || "❌ Error al obtener el top.");
 				}

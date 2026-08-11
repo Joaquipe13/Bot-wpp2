@@ -1,4 +1,5 @@
 export {topDiarioCommand} from './topDiario';
+export {TopAntipalaCommand} from './topAntipala';
 export {pingCommand} from './ping';
 export {audioCommand} from './audio';
 export {guardarAudioCommand} from './guardarAudio';
