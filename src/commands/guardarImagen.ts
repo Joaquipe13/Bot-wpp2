@@ -17,10 +17,10 @@ async function nextAutoName(): Promise<string> {
 	const files = await fs.readdir(MEMES_DIR);
 	let max = 0;
 	for (const file of files) {
-		const match = file.match(/^meme(\d+)\./);
+		const match = file.match(/^imagen(\d+)\./);
 		if (match) max = Math.max(max, parseInt(match[1], 10));
 	}
-	return `meme${max + 1}`;
+	return `imagen${max + 1}`;
 }
 
 export async function guardarImagenCommand(

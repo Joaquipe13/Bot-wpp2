@@ -3,6 +3,7 @@ export {TopAntipalaCommand} from './topAntipala';
 export {pingCommand} from './ping';
 export {audioCommand} from './audio';
 export {helpAudioCommand} from './helpAudio';
+export {helpImagenCommand} from './helpImagen';
 export {guardarAudioCommand} from './guardarAudio';
 export {guardarImagenCommand} from './guardarImagen';
 export {imagenCommand} from './imagen';

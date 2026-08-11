@@ -88,7 +88,8 @@ export async function handleCommand(
 
 			case "imagen":
 				try {
-					return { type: 'image', payload: await imagenCommand() };
+					const nombreImagen = body.trim().split(" ")[1];
+					return { type: 'image', payload: await imagenCommand(nombreImagen) };
 				} catch (err: any) {
 					throw new Error(err.message || "❌ Error al obtener la imagen.");
 				}

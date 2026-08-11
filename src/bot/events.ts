@@ -4,7 +4,7 @@ import qrcode from "qrcode-terminal";
 import QRCode from "qrcode";
 import fs from "fs/promises";
 import path from "path";
-import { topDiarioCommand, helpAudioCommand } from "../commands";
+import { topDiarioCommand, helpAudioCommand, helpImagenCommand } from "../commands";
 import { TopAntipala, Commands } from "../classes";
 import { handleCommand } from "../utils";
 import { DB_PATH } from "../db/database";
@@ -105,6 +105,12 @@ export async function registerSocketEvents(
 									helpMessage = await helpAudioCommand(commandArgs[2]);
 								} catch (error: any) {
 									helpMessage = error.message || "❌ Error al obtener la ayuda de /audio.";
+								}
+							} else if (commandArgs[1] === "imagen") {
+								try {
+									helpMessage = await helpImagenCommand();
+								} catch (error: any) {
+									helpMessage = error.message || "❌ Error al obtener la ayuda de /imagen.";
 								}
 							} else {
 								helpMessage = Commands.getInstance().help(userId);
