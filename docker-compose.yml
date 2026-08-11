@@ -10,6 +10,7 @@ services:
       - .env
     volumes:
       - ./data:/app/data       # base de datos SQLite (incluye la sesión de WhatsApp/Baileys)
+      - ./audios:/app/audios   # audios curados + los que se agregan con /guardar
     logging:
       driver: json-file
       options:

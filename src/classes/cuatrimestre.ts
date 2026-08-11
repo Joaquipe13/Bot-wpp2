@@ -10,6 +10,8 @@ export class PeriodManager {
 	private static readonly periods: Record<string, period> = {
 		"2025-1": new period(new Date("2025-03-17"), new Date("2025-07-04")),
 		"2025-2": new period(new Date("2025-07-21"), new Date("2026-03-16")),
+		"2026-1": new period(new Date("2026-03-17"), new Date("2026-07-04")),
+		"2026-2": new period(new Date("2026-07-20"), new Date("2027-03-01")),
 	};
 
 	static resolvePeriodByDate(date: Date): string {

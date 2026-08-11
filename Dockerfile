@@ -26,6 +26,9 @@ RUN pnpm build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# CLI de sqlite3 para poder consultar/cargar datos a mano en /app/data/data.db
+RUN apk add --no-cache sqlite
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY audios ./audios

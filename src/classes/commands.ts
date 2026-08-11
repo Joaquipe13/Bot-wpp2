@@ -4,10 +4,19 @@ export class Commands {
 		help: 'common',
 		ping: 'common',
 		topdiario: 'common',
-		play: 'common',
+		audio: 'common',
 		guardar: 'admin',
+		imagen: 'common',
+		editar: 'admin',
 		final: 'admin',
 		top: 'common',
+	};
+	private static readonly aliases: Record<string, string> = {
+		a: 'audio',
+		i: 'imagen',
+		e: 'editar',
+		g: 'guardar',
+		h: 'help',
 	};
 	private static readonly adminUsers: string[] = ['222359231398085'];
 	private constructor() {}
@@ -17,6 +26,10 @@ export class Commands {
 		Commands.instance = new Commands();
 		}
 		return Commands.instance;
+	}
+
+	public static resolveAlias(cmd: string): string {
+		return Commands.aliases[cmd] || cmd;
 	}
 
 	public static exists(cmd: string): boolean {

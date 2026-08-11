@@ -4,7 +4,7 @@ import qrcode from "qrcode-terminal";
 import QRCode from "qrcode";
 import fs from "fs/promises";
 import path from "path";
-import { topDiarioCommand } from "../commands";
+import { topDiarioCommand, helpAudioCommand } from "../commands";
 import { TopAntipala, Commands } from "../classes";
 import { handleCommand } from "../utils";
 import { DB_PATH } from "../db/database";
@@ -96,9 +96,19 @@ export async function registerSocketEvents(
 
 				if (bodyLower.startsWith("/")) {
 					try {
-						const command = bodyLower.split(" ")[0].slice(1);
+						const commandArgs = bodyLower.trim().split(/\s+/);
+						const command = Commands.resolveAlias(commandArgs[0].slice(1));
 						if (command === "help") {
-							const helpMessage = Commands.getInstance().help(userId);
+							let helpMessage: string;
+							if (commandArgs[1] === "audio") {
+								try {
+									helpMessage = await helpAudioCommand(commandArgs[2]);
+								} catch (error: any) {
+									helpMessage = error.message || "❌ Error al obtener la ayuda de /audio.";
+								}
+							} else {
+								helpMessage = Commands.getInstance().help(userId);
+							}
 							await sock.sendMessage(replyJid, { text: helpMessage }, { quoted: msg });
 							continue;
 						}
@@ -122,6 +132,15 @@ export async function registerSocketEvents(
 										audio: result.payload.buffer,
 										mimetype: "audio/ogg; codecs=opus",
 										ptt: true,
+									},
+									{ quoted: msg }
+								);
+							} else if (result.type === "image") {
+								await sock.sendMessage(
+									replyJid,
+									{
+										image: result.payload.buffer,
+										mimetype: result.payload.mimetype,
 									},
 									{ quoted: msg }
 								);

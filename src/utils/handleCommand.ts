@@ -1,10 +1,11 @@
 import { proto } from '@whiskeysockets/baileys';
-import { audioCommand, pingCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, TopAntipalaCommand } from '../commands';
+import { audioCommand, pingCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, TopAntipalaCommand } from '../commands';
 import { TopAntipala } from '../classes';
 
 export type CommandResult =
 	| { type: 'text'; payload: string }
-	| { type: 'audio'; payload: { buffer: Buffer; mimetype: string; fileName: string } };
+	| { type: 'audio'; payload: { buffer: Buffer; mimetype: string; fileName: string } }
+	| { type: 'image'; payload: { buffer: Buffer; mimetype: string } };
 
 export async function handleCommand(
 	command: string,
@@ -48,7 +49,7 @@ export async function handleCommand(
 					throw new Error(err.message || "❌ Error al registrar la falta.");
 				}
 
-			case "play":
+			case "audio":
 				try {
 					return { type: 'audio', payload: await audioCommand(body) };
 				} catch (err: any) {
@@ -58,23 +59,63 @@ export async function handleCommand(
 			case "guardar":
 				try {
 					const audioMessage = quotedMessage?.audioMessage;
-					if (!audioMessage) {
+					const imageMessage = quotedMessage?.imageMessage;
+					if (!audioMessage && !imageMessage) {
 						throw new Error(
-							"❌ Tenés que responder a un audio para guardarlo. Uso: /guardar [nombre]"
+							"❌ Tenés que responder a un audio o una imagen para guardarlo.\nUso: /guardar [carpeta] [nombre] (audio) o /guardar [nombre] (imagen)"
 						);
 					}
 					if (quotedFromBot) {
 						throw new Error(
-							"❌ Solo se pueden guardar audios que mandó alguien del grupo, no los que mandó el bot."
+							"❌ Solo se pueden guardar audios/imágenes que mandó alguien del grupo, no los que mandó el bot."
 						);
+					}
+					if (imageMessage) {
+						const nombreImagen = body.trim().split(" ")[1];
+						return {
+							type: 'text',
+							payload: await guardarImagenCommand(nombreImagen, imageMessage),
+						};
 					}
 					const [, nombreCarpeta, nombreAudio] = body.trim().split(" ");
 					return {
 						type: 'text',
-						payload: await guardarAudioCommand(nombreCarpeta, nombreAudio, audioMessage),
+						payload: await guardarAudioCommand(nombreCarpeta, nombreAudio, audioMessage!),
 					};
 				} catch (err: any) {
-					throw new Error(err.message || "❌ Error al guardar el audio.");
+					throw new Error(err.message || "❌ Error al guardar.");
+				}
+
+			case "imagen":
+				try {
+					return { type: 'image', payload: await imagenCommand() };
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al obtener la imagen.");
+				}
+
+			case "editar":
+				try {
+					const args = body.trim().split(" ");
+					const tipo = args[1];
+					if (tipo === "audio") {
+						const [, , carpeta, nombreViejo, nombreNuevo] = args;
+						return {
+							type: 'text',
+							payload: await editarAudioCommand(carpeta, nombreViejo, nombreNuevo),
+						};
+					}
+					if (tipo === "imagen") {
+						const [, , nombreViejo, nombreNuevo] = args;
+						return {
+							type: 'text',
+							payload: await editarImagenCommand(nombreViejo, nombreNuevo),
+						};
+					}
+					throw new Error(
+						"❌ Uso: /editar audio [carpeta] [nombre_viejo] [nombre_nuevo]\no /editar imagen [nombre_viejo] [nombre_nuevo]"
+					);
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al editar.");
 				}
 
 			default:

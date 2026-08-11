@@ -29,7 +29,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Esto construye la imagen (compila TypeScript y el addon nativo `better-sqlite3`) y arranca el contenedor. `./data` se crea en el host y persiste ahí la base SQLite — que también guarda la sesión de WhatsApp (credenciales de Baileys), así que un solo volumen alcanza para sobrevivir reinicios/actualizaciones/migraciones de host.
+Esto construye la imagen (compila TypeScript y el addon nativo `better-sqlite3`) y arranca el contenedor. `./data` persiste la base SQLite (incluye la sesión de WhatsApp y los memes guardados con `/guardar`) y `./audios` persiste los audios, tanto los del repo como los agregados con `/guardar` en el grupo — ambos sobreviven reinicios/actualizaciones/migraciones de host.
 
 ## 3. Primera autenticación (escanear QR)
 
