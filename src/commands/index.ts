@@ -8,6 +8,7 @@ export {guardarAudioCommand} from './guardarAudio';
 export {guardarImagenCommand} from './guardarImagen';
 export {imagenCommand} from './imagen';
 export {editarAudioCommand} from './editarAudio';
+export {crearAudioCommand} from './crearAudio';
 export {editarImagenCommand} from './editarImagen';
 export {showAllTopsCommand} from './showAllTops';
 export {showTopOfCommand} from './showTopOf';

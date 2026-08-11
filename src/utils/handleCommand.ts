@@ -1,5 +1,5 @@
 import { proto } from '@whiskeysockets/baileys';
-import { audioCommand, pingCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, TopAntipalaCommand } from '../commands';
+import { audioCommand, pingCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, crearAudioCommand, TopAntipalaCommand } from '../commands';
 import { TopAntipala } from '../classes';
 
 export type CommandResult =
@@ -117,6 +117,18 @@ export async function handleCommand(
 					);
 				} catch (err: any) {
 					throw new Error(err.message || "❌ Error al editar.");
+				}
+
+			case "crear":
+				try {
+					const args = body.trim().split(" ");
+					const tipo = args[1];
+					if (tipo === "audio") {
+						return { type: 'text', payload: await crearAudioCommand(args[2]) };
+					}
+					throw new Error("❌ Uso: /crear audio [nombre_carpeta]");
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al crear.");
 				}
 
 			default:

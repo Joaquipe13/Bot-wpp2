@@ -48,6 +48,25 @@ docker compose up -d --build
 
 La sesión y la base de datos no se pierden porque viven en volúmenes fuera de la imagen.
 
+## 5. Auto-deploy al pushear a main (opcional)
+
+Para no tener que entrar por SSH cada vez que cambia el código: `scripts/auto-deploy.sh` revisa si `origin/main` tiene commits nuevos y, si los hay, hace `git pull` + rebuild solo. Pensado para correr por cron cada pocos minutos — no hace nada (ni deja rastro en el log) si no hay cambios.
+
+```bash
+chmod +x scripts/auto-deploy.sh
+crontab -e
+```
+
+Agregá esta línea (ajustá la ruta a donde clonaste el repo):
+
+```
+*/5 * * * * /home/tu_usuario/bot-wpp/scripts/auto-deploy.sh
+```
+
+Cada 5 minutos revisa y actualiza si hace falta. El resultado de cada corrida con cambios queda en `logs/deploy.log` dentro del repo (`tail -f logs/deploy.log` para ver en vivo). Si el repo tiene cambios locales sin commitear (por ejemplo si tocaste algo a mano en el VPS), el script no actualiza y avisa en el log en vez de pisarlos.
+
+Nota: el cron corre con un `PATH` mínimo y puede no encontrar `git`/`docker`. Si el log muestra errores de "command not found", probá correr el script a mano primero (`./scripts/auto-deploy.sh`) para confirmar que anda, y si hace falta agregá `PATH=/usr/bin:/usr/local/bin` como primera línea del crontab.
+
 ## Comandos útiles
 
 ```bash

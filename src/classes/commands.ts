@@ -8,6 +8,7 @@ export class Commands {
 		guardar: 'admin',
 		imagen: 'common',
 		editar: 'admin',
+		crear: 'admin',
 		final: 'admin',
 		top: 'common',
 	};
@@ -17,6 +18,7 @@ export class Commands {
 		e: 'editar',
 		g: 'guardar',
 		h: 'help',
+		c: 'crear',
 	};
 	private static readonly adminUsers: string[] = ['222359231398085'];
 	private constructor() {}
