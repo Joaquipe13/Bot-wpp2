@@ -1,11 +1,16 @@
 import { WASocket, proto, DisconnectReason } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import qrcode from "qrcode-terminal";
+import QRCode from "qrcode";
+import fs from "fs/promises";
+import path from "path";
 import { topDiarioCommand } from "../commands";
 import { TopAntipala, Commands } from "../classes";
 import { handleCommand } from "../utils";
+import { DB_PATH } from "../db/database";
 
 const topAntipala = TopAntipala.getInstance();
+const QR_PATH = path.join(path.dirname(DB_PATH), "qr.png");
 
 function getMessageText(msg: proto.IWebMessageInfo): string {
 	return (
@@ -21,6 +26,10 @@ function getSenderId(msg: proto.IWebMessageInfo): string {
 	return jid.split("@")[0];
 }
 
+function baseJid(jid?: string | null): string {
+	return (jid || "").split(":")[0].split("@")[0];
+}
+
 export async function registerSocketEvents(
 	sock: WASocket,
 	reconnect: () => Promise<void>,
@@ -29,6 +38,12 @@ export async function registerSocketEvents(
 	sock.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
 		if (qr) {
 			qrcode.generate(qr, { small: true });
+			try {
+				await QRCode.toFile(QR_PATH, qr);
+				console.log(`📷 QR también guardado como imagen en: ${QR_PATH}`);
+			} catch (error) {
+				console.error("⚠️ No se pudo guardar el QR como imagen:", error);
+			}
 		}
 
 		if (connection === "close") {
@@ -43,6 +58,7 @@ export async function registerSocketEvents(
 			}
 		} else if (connection === "open") {
 			console.log("🔐 Autenticado con éxito. Bot listo.");
+			await fs.unlink(QR_PATH).catch(() => {});
 		}
 	});
 
@@ -88,7 +104,10 @@ export async function registerSocketEvents(
 						}
 						if (Commands.exists(command)) {
 							Commands.hasPermission(userId, command);
-							const result = await handleCommand(command, bodyLower);
+							const contextInfo = msg.message?.extendedTextMessage?.contextInfo;
+							const quotedMessage = contextInfo?.quotedMessage;
+							const quotedFromBot = baseJid(contextInfo?.participant) === baseJid(sock.user?.id);
+							const result = await handleCommand(command, bodyLower, quotedMessage, quotedFromBot);
 							console.log(`${userId}\n🔍 Comando ejecutado: ${command}`);
 							if (result.type === "text") {
 								await sock.sendMessage(

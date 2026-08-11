@@ -40,6 +40,9 @@ tsc-watch.log
 /.wwebjs_cache
 /session
 
+# datos de runtime (DB SQLite, sesión de WhatsApp, QR generado)
+/data
+
 
 # Scripts solo locales
 /src/convertOpusToOgg.ts

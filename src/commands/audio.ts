@@ -1,9 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { getFoldersInPath } from '../utils';
+import { getFoldersInPath, AUDIOS_DIR } from '../utils';
 
 export async function audioCommand(body: string): Promise<{ buffer: Buffer; mimetype: string; fileName: string }> {
-	const baseDir = path.join(__dirname, './../../audios/');
+	const baseDir = AUDIOS_DIR;
 	try {
 		const args = body.trim().split(" ");
 		const disponibles = getFoldersInPath(baseDir);

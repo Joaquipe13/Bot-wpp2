@@ -5,6 +5,7 @@ export class Commands {
 		//ping: 'common',
 		//topdiario: 'common',
 		play: 'common',
+		guardar: 'admin',
 		//final: 'admin',
 		//top: 'common',
 	};

@@ -1,11 +1,17 @@
-import { audioCommand, pingCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand } from '../commands';
+import { proto } from '@whiskeysockets/baileys';
+import { audioCommand, pingCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand } from '../commands';
 import { TopAntipala } from '../classes';
 
 export type CommandResult =
 	| { type: 'text'; payload: string }
 	| { type: 'audio'; payload: { buffer: Buffer; mimetype: string; fileName: string } };
 
-export async function handleCommand(command: string, body: string): Promise<CommandResult> {
+export async function handleCommand(
+	command: string,
+	body: string,
+	quotedMessage?: proto.IMessage | null,
+	quotedFromBot?: boolean
+): Promise<CommandResult> {
 	const topAntipala = TopAntipala.getInstance();
 	try {
 		switch (command) {
@@ -47,6 +53,28 @@ export async function handleCommand(command: string, body: string): Promise<Comm
 					return { type: 'audio', payload: await audioCommand(body) };
 				} catch (err: any) {
 					throw new Error(err.message || "❌ Error al obtener el audio.");
+				}
+
+			case "guardar":
+				try {
+					const audioMessage = quotedMessage?.audioMessage;
+					if (!audioMessage) {
+						throw new Error(
+							"❌ Tenés que responder a un audio para guardarlo. Uso: /guardar [nombre]"
+						);
+					}
+					if (quotedFromBot) {
+						throw new Error(
+							"❌ Solo se pueden guardar audios que mandó alguien del grupo, no los que mandó el bot."
+						);
+					}
+					const [, nombreCarpeta, nombreAudio] = body.trim().split(" ");
+					return {
+						type: 'text',
+						payload: await guardarAudioCommand(nombreCarpeta, nombreAudio, audioMessage),
+					};
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al guardar el audio.");
 				}
 
 			default:

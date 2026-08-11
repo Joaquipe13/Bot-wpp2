@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), "data.db");
+export const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), "data.db");
 
 class DatabaseManager {
 	private static instance: DatabaseManager;
