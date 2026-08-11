@@ -29,7 +29,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Esto construye la imagen (compila TypeScript y el addon nativo `better-sqlite3`) y arranca el contenedor. `./data` y `./session` se crean en el host y persisten la base SQLite y la sesión de WhatsApp entre reinicios/actualizaciones.
+Esto construye la imagen (compila TypeScript y el addon nativo `better-sqlite3`) y arranca el contenedor. `./data` se crea en el host y persiste ahí la base SQLite — que también guarda la sesión de WhatsApp (credenciales de Baileys), así que un solo volumen alcanza para sobrevivir reinicios/actualizaciones/migraciones de host.
 
 ## 3. Primera autenticación (escanear QR)
 
@@ -62,9 +62,12 @@ docker compose ps               # estado
 ## Backup de datos
 
 ```bash
-cp data/data.db data/data.db.bak
-tar -czf backup-session.tar.gz session/
+cp data/data.db data/data.db.bak   # incluye también la sesión de WhatsApp
 ```
+
+## Sesión de WhatsApp
+
+Las credenciales de Baileys se guardan en la tabla `auth_state` de la misma base SQLite (no en archivos sueltos). Al arrancar, el bot intenta reconectar con la sesión guardada en `./data/data.db`; si no hay sesión válida (primera vez, o si cerraste la sesión desde el celular), vuelve a mostrar el QR en `docker compose logs -f` automáticamente — no hace falta borrar nada a mano.
 
 ## Notas
 

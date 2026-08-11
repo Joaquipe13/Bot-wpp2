@@ -3,8 +3,7 @@ dist
 .git
 .gitignore
 
-# datos de runtime (se montan como volúmenes)
-session/
+# datos de runtime (se montan como volumen)
 data/
 *.db
 

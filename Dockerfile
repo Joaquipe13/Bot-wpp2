@@ -31,8 +31,8 @@ COPY --from=builder /app/dist ./dist
 COPY audios ./audios
 COPY package.json ./
 
-# Directorios montados como volúmenes en runtime
-RUN mkdir -p /app/session /app/data
+# Directorio montado como volumen en runtime (DB + sesión de WhatsApp, ambas en SQLite)
+RUN mkdir -p /app/data
 
 RUN addgroup -g 1001 -S nodejs \
     && adduser -S botuser -u 1001 -G nodejs \

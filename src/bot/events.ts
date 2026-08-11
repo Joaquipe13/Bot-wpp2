@@ -23,7 +23,8 @@ function getSenderId(msg: proto.IWebMessageInfo): string {
 
 export async function registerSocketEvents(
 	sock: WASocket,
-	reconnect: () => Promise<void>
+	reconnect: () => Promise<void>,
+	clearAuthState: () => void
 ): Promise<void> {
 	sock.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
 		if (qr) {
@@ -33,9 +34,9 @@ export async function registerSocketEvents(
 		if (connection === "close") {
 			const code = (lastDisconnect?.error as Boom)?.output?.statusCode;
 			if (code === DisconnectReason.loggedOut) {
-				console.error(
-					"❌ Sesión cerrada. Eliminá la carpeta ./session y volvé a escanear el QR."
-				);
+				console.error("❌ Sesión cerrada desde el celular. Generando nuevo QR...");
+				clearAuthState();
+				await reconnect();
 			} else {
 				console.warn("⚠️ Desconectado, reconectando...");
 				await reconnect();

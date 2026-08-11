@@ -1,12 +1,17 @@
 import makeWASocket, {
-	useMultiFileAuthState,
 	fetchLatestBaileysVersion,
 	WASocket,
 } from "@whiskeysockets/baileys";
 import P from "pino";
+import DatabaseManager from "../db/database";
+import { useSqliteAuthState } from "../db/sqliteAuthState";
 
-export async function createSocket(): Promise<WASocket> {
-	const { state, saveCreds } = await useMultiFileAuthState("./session");
+export async function createSocket(): Promise<{
+	sock: WASocket;
+	clearAuthState: () => void;
+}> {
+	const db = DatabaseManager.getInstance().getDB();
+	const { state, saveCreds, clearAuthState } = useSqliteAuthState(db);
 	const { version } = await fetchLatestBaileysVersion();
 
 	const sock = makeWASocket({
@@ -18,5 +23,5 @@ export async function createSocket(): Promise<WASocket> {
 
 	sock.ev.on("creds.update", saveCreds);
 
-	return sock;
+	return { sock, clearAuthState };
 }

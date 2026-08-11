@@ -61,6 +61,10 @@ class DatabaseManager {
 				topero_id INTEGER NOT NULL,
 				FOREIGN KEY (topero_id) REFERENCES toperos(id)
 			);
+			CREATE TABLE IF NOT EXISTS auth_state (
+				key TEXT PRIMARY KEY,
+				value TEXT NOT NULL
+			);
 		`);
 	}
 

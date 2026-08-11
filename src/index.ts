@@ -10,8 +10,8 @@ async function main() {
 
 	async function startBot() {
 		try {
-			const sock = await createSocket();
-			await registerSocketEvents(sock, startBot);
+			const { sock, clearAuthState } = await createSocket();
+			await registerSocketEvents(sock, startBot, clearAuthState);
 		} catch (error) {
 			console.error("❌ Error al crear socket, reintentando en 5s...", error);
 			setTimeout(startBot, 5000);
