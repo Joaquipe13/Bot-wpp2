@@ -12,11 +12,12 @@ RUN pnpm install --frozen-lockfile
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-RUN apk add --no-cache python3 make g++
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml .npmrc ./
-RUN pnpm install --frozen-lockfile --production=false
+# --ignore-scripts: tsc solo necesita los .d.ts, no el addon nativo compilado
+# (ese binario nunca sale de este stage, así que compilarlo acá es trabajo tirado)
+RUN pnpm install --frozen-lockfile --production=false --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src ./src

@@ -67,6 +67,29 @@ Cada 5 minutos revisa y actualiza si hace falta. El resultado de cada corrida co
 
 Nota: el cron corre con un `PATH` mínimo y puede no encontrar `git`/`docker`. Si el log muestra errores de "command not found", probá correr el script a mano primero (`./scripts/auto-deploy.sh`) para confirmar que anda, y si hace falta agregá `PATH=/usr/bin:/usr/local/bin` como primera línea del crontab.
 
+## 6. Auditoría de recursos (para dimensionar el VPS)
+
+`scripts/resource-monitor.sh` toma una foto de `docker stats` (CPU, memoria, red, disco) y la agrega a un CSV. Corriéndolo por cron cada 1-5 minutos durante unos días de uso real (con gente mandando audios/imágenes, no solo en reposo), queda un historial que sirve para decidir si el plan de VPS que elegiste alcanza o se queda corto.
+
+```bash
+chmod +x scripts/resource-monitor.sh
+crontab -e
+```
+
+Agregá (junto a la línea de auto-deploy si ya la tenés):
+
+```
+*/5 * * * * /home/tu_usuario/bot-wpp/scripts/resource-monitor.sh
+```
+
+Los datos quedan en `logs/resource-usage.csv` (columnas: timestamp, cpu_perc, mem_usage, mem_perc, net_io, block_io, pids). Para ver las 5 muestras con mayor % de memoria usada:
+
+```bash
+sort -t',' -k4 -n -r logs/resource-usage.csv | head -5
+```
+
+O simplemente abrí el CSV en una planilla (Excel, Google Sheets) para graficarlo. Si ves que el `mem_perc` anda cerca del 100% seguido, es momento de subir el `mem_limit` en `docker-compose.yml` o de pasar a un plan de VPS con más RAM.
+
 ## Comandos útiles
 
 ```bash
