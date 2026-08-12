@@ -1,5 +1,5 @@
 import { proto } from '@whiskeysockets/baileys';
-import { audioCommand, pingCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, crearAudioCommand, TopAntipalaCommand } from '../commands';
+import { audioCommand, pingCommand, repoCommand, sugerirCommand, sugerenciasCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, crearAudioCommand, TopAntipalaCommand } from '../commands';
 import { TopAntipala } from '../classes';
 
 export type CommandResult =
@@ -11,13 +11,33 @@ export async function handleCommand(
 	command: string,
 	body: string,
 	quotedMessage?: proto.IMessage | null,
-	quotedFromBot?: boolean
+	quotedFromBot?: boolean,
+	userId?: string,
+	rawBody?: string
 ): Promise<CommandResult> {
 	const topAntipala = TopAntipala.getInstance();
 	try {
 		switch (command) {
 			case "ping":
 				return { type: 'text', payload: pingCommand() };
+
+			case "repo":
+				return { type: 'text', payload: repoCommand() };
+
+			case "sugerir":
+				try {
+					const texto = (rawBody || body).trim().replace(/^\S+\s*/, "");
+					return { type: 'text', payload: sugerirCommand(userId || "desconocido", texto) };
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al guardar la sugerencia.");
+				}
+
+			case "sugerencias":
+				try {
+					return { type: 'text', payload: sugerenciasCommand() };
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al obtener las sugerencias.");
+				}
 
 			case "topdiario":
 				try {

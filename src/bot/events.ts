@@ -127,7 +127,7 @@ export async function registerSocketEvents(
 							const contextInfo = msg.message?.extendedTextMessage?.contextInfo;
 							const quotedMessage = contextInfo?.quotedMessage;
 							const quotedFromBot = baseJid(contextInfo?.participant) === baseJid(sock.user?.id);
-							const result = await handleCommand(command, bodyLower, quotedMessage, quotedFromBot);
+							const result = await handleCommand(command, bodyLower, quotedMessage, quotedFromBot, userId, body);
 							console.log(`${userId}\n🔍 Comando ejecutado: ${command}`);
 							try {
 								if (result.type === "text") {

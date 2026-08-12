@@ -3,6 +3,9 @@ export class Commands {
 	private static readonly commands: Record<string, 'common' | 'admin'> = {
 		help: 'common',
 		ping: 'common',
+		repo: 'common',
+		sugerir: 'common',
+		sugerencias: 'admin',
 		topdiario: 'common',
 		audio: 'common',
 		guardar: 'admin',

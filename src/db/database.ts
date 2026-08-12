@@ -65,6 +65,12 @@ class DatabaseManager {
 				key TEXT PRIMARY KEY,
 				value TEXT NOT NULL
 			);
+			CREATE TABLE IF NOT EXISTS sugerencias (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id TEXT NOT NULL,
+				texto TEXT NOT NULL,
+				created_at TEXT NOT NULL DEFAULT (datetime('now'))
+			);
 		`);
 	}
 
