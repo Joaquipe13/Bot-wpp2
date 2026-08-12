@@ -4,6 +4,7 @@ export {pingCommand} from './ping';
 export {repoCommand} from './repo';
 export {sugerirCommand} from './sugerir';
 export {sugerenciasCommand} from './sugerencias';
+export {chisteCommand, guardarChisteCommand} from './chistes';
 export {audioCommand} from './audio';
 export {helpAudioCommand} from './helpAudio';
 export {helpImagenCommand} from './helpImagen';

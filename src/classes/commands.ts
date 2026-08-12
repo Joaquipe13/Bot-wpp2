@@ -6,6 +6,7 @@ export class Commands {
 		repo: 'common',
 		sugerir: 'common',
 		sugerencias: 'admin',
+		chiste: 'common',
 		topdiario: 'common',
 		audio: 'common',
 		guardar: 'admin',

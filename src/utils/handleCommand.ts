@@ -1,5 +1,5 @@
 import { proto } from '@whiskeysockets/baileys';
-import { audioCommand, pingCommand, repoCommand, sugerirCommand, sugerenciasCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, crearAudioCommand, TopAntipalaCommand } from '../commands';
+import { audioCommand, pingCommand, repoCommand, sugerirCommand, sugerenciasCommand, chisteCommand, guardarChisteCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, crearAudioCommand, TopAntipalaCommand } from '../commands';
 import { TopAntipala } from '../classes';
 
 export type CommandResult =
@@ -37,6 +37,13 @@ export async function handleCommand(
 					return { type: 'text', payload: sugerenciasCommand() };
 				} catch (err: any) {
 					throw new Error(err.message || "❌ Error al obtener las sugerencias.");
+				}
+
+			case "chiste":
+				try {
+					return { type: 'text', payload: await chisteCommand() };
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al obtener el chiste.");
 				}
 
 			case "topdiario":
@@ -78,6 +85,11 @@ export async function handleCommand(
 
 			case "guardar":
 				try {
+					if (body.trim().split(" ")[1] === "chiste") {
+						const texto = (rawBody || body).trim().replace(/^\S+\s+\S+\s*/, "");
+						return { type: 'text', payload: await guardarChisteCommand(texto) };
+					}
+
 					const audioMessage = quotedMessage?.audioMessage;
 					const imageMessage = quotedMessage?.imageMessage;
 					if (!audioMessage && !imageMessage) {
