@@ -4,8 +4,8 @@ services:
     image: bot-wpp:latest
     container_name: bot-wpp
     restart: unless-stopped
-    mem_limit: 512m
-    memswap_limit: 512m
+    mem_limit: 800m
+    memswap_limit: 800m
     env_file:
       - .env
     volumes:
