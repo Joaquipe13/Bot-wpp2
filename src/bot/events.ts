@@ -85,11 +85,15 @@ export async function registerSocketEvents(
 							await sock.sendMessage(replyJid, { text: reply }, { quoted: msg });
 						}
 					} catch (error: any) {
-						await sock.sendMessage(
-							replyJid,
-							{ text: error.message || "❌ Error al procesar el top." },
-							{ quoted: msg }
-						);
+						try {
+							await sock.sendMessage(
+								replyJid,
+								{ text: error.message || "❌ Error al procesar el top." },
+								{ quoted: msg }
+							);
+						} catch (sendError: any) {
+							console.error("⚠️ No se pudo avisar el error (conexión caída):", sendError);
+						}
 					}
 					continue;
 				}
@@ -125,39 +129,47 @@ export async function registerSocketEvents(
 							const quotedFromBot = baseJid(contextInfo?.participant) === baseJid(sock.user?.id);
 							const result = await handleCommand(command, bodyLower, quotedMessage, quotedFromBot);
 							console.log(`${userId}\n🔍 Comando ejecutado: ${command}`);
-							if (result.type === "text") {
-								await sock.sendMessage(
-									replyJid,
-									{ text: result.payload },
-									{ quoted: msg }
-								);
-							} else if (result.type === "audio") {
-								await sock.sendMessage(
-									replyJid,
-									{
-										audio: result.payload.buffer,
-										mimetype: "audio/ogg; codecs=opus",
-										ptt: true,
-									},
-									{ quoted: msg }
-								);
-							} else if (result.type === "image") {
-								await sock.sendMessage(
-									replyJid,
-									{
-										image: result.payload.buffer,
-										mimetype: result.payload.mimetype,
-									},
-									{ quoted: msg }
-								);
+							try {
+								if (result.type === "text") {
+									await sock.sendMessage(
+										replyJid,
+										{ text: result.payload },
+										{ quoted: msg }
+									);
+								} else if (result.type === "audio") {
+									await sock.sendMessage(
+										replyJid,
+										{
+											audio: result.payload.buffer,
+											mimetype: "audio/ogg; codecs=opus",
+											ptt: true,
+										},
+										{ quoted: msg }
+									);
+								} else if (result.type === "image") {
+									await sock.sendMessage(
+										replyJid,
+										{
+											image: result.payload.buffer,
+											mimetype: result.payload.mimetype,
+										},
+										{ quoted: msg }
+									);
+								}
+							} catch (sendError: any) {
+								console.error("⚠️ Falló el envío de audio/imagen (conexión inestable):", sendError);
 							}
 						}
 					} catch (error: any) {
-						await sock.sendMessage(
-							replyJid,
-							{ text: error.message || "❌ Error al procesar el comando." },
-							{ quoted: msg }
-						);
+						try {
+							await sock.sendMessage(
+								replyJid,
+								{ text: error.message || "❌ Error al procesar el comando." },
+								{ quoted: msg }
+							);
+						} catch (sendError: any) {
+							console.error("⚠️ No se pudo avisar el error (conexión caída):", sendError);
+						}
 					}
 				}
 			} catch (error: any) {
