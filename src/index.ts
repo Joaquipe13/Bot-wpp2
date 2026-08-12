@@ -4,6 +4,14 @@ import { createSocket, registerSocketEvents } from "./bot";
 
 dotenv.config();
 
+process.on("unhandledRejection", (reason) => {
+	console.error("⚠️ unhandledRejection (el bot sigue corriendo):", reason);
+});
+
+process.on("uncaughtException", (error) => {
+	console.error("⚠️ uncaughtException (el bot sigue corriendo):", error);
+});
+
 async function main() {
 	DatabaseManager.getInstance();
 	console.log("✅ Base de datos lista y bot inicializado");
