@@ -3,6 +3,7 @@ export {log} from './logger';
 export {parseDate} from './parseDate';
 export {parseTop} from './parseTop';
 export {getFoldersInPath} from './getFoldersInPath';
+export {normalizeJid} from './normalizeJid';
 export {AUDIOS_DIR} from './audiosDir';
 export {MEMES_DIR} from './memesDir';
 export {handleCommand} from './handleCommand';

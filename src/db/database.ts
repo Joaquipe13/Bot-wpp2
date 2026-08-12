@@ -15,6 +15,7 @@ class DatabaseManager {
 		this.db.pragma("journal_mode = WAL");
 		this.db.pragma("foreign_keys = ON");
 		this.createTables();
+		this.migrateToperos();
 		console.log(`✅ SQLite conectado: ${DB_PATH}`);
 	}
 
@@ -33,7 +34,10 @@ class DatabaseManager {
 			);
 			CREATE TABLE IF NOT EXISTS toperos (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				name TEXT NOT NULL UNIQUE
+				name TEXT NOT NULL UNIQUE,
+				jid TEXT,
+				role TEXT NOT NULL DEFAULT 'common',
+				banned INTEGER NOT NULL DEFAULT 0
 			);
 			CREATE TABLE IF NOT EXISTS top_diario_toperos (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +76,25 @@ class DatabaseManager {
 				created_at TEXT NOT NULL DEFAULT (datetime('now'))
 			);
 		`);
+	}
+
+	// Migra bases ya existentes que fueron creadas antes de sumar jid/role/banned a toperos
+	// (CREATE TABLE IF NOT EXISTS no altera tablas ya existentes).
+	private migrateToperos(): void {
+		const columns = this.db.prepare("PRAGMA table_info(toperos)").all() as { name: string }[];
+		const names = columns.map((c) => c.name);
+		if (!names.includes("jid")) {
+			this.db.exec("ALTER TABLE toperos ADD COLUMN jid TEXT");
+		}
+		if (!names.includes("role")) {
+			this.db.exec("ALTER TABLE toperos ADD COLUMN role TEXT NOT NULL DEFAULT 'common'");
+		}
+		if (!names.includes("banned")) {
+			this.db.exec("ALTER TABLE toperos ADD COLUMN banned INTEGER NOT NULL DEFAULT 0");
+		}
+		// UNIQUE vía ALTER TABLE no está permitido en SQLite; se agrega como índice aparte.
+		// SQLite trata cada NULL como distinto, así que los toperos sin jid asignado no chocan entre sí.
+		this.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_toperos_jid ON toperos(jid)");
 	}
 
 	public getDB(): Database.Database {

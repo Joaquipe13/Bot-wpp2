@@ -1,5 +1,5 @@
 import { proto } from '@whiskeysockets/baileys';
-import { audioCommand, pingCommand, repoCommand, sugerirCommand, sugerenciasCommand, chisteCommand, guardarChisteCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, crearAudioCommand, TopAntipalaCommand } from '../commands';
+import { audioCommand, pingCommand, repoCommand, sugerirCommand, sugerenciasCommand, chisteCommand, guardarChisteCommand, banCommand, unbanCommand, adminCommand, adminRemoveCommand, setToperoCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, crearAudioCommand, TopAntipalaCommand } from '../commands';
 import { TopAntipala } from '../classes';
 
 export type CommandResult =
@@ -13,7 +13,8 @@ export async function handleCommand(
 	quotedMessage?: proto.IMessage | null,
 	quotedFromBot?: boolean,
 	userId?: string,
-	rawBody?: string
+	rawBody?: string,
+	mentionedJid?: string
 ): Promise<CommandResult> {
 	const topAntipala = TopAntipala.getInstance();
 	try {
@@ -44,6 +45,54 @@ export async function handleCommand(
 					return { type: 'text', payload: await chisteCommand() };
 				} catch (err: any) {
 					throw new Error(err.message || "❌ Error al obtener el chiste.");
+				}
+
+			case "ban":
+				try {
+					if (!mentionedJid) {
+						throw new Error("❌ Mencioná (@) a quién querés banear. Uso: /ban @contacto");
+					}
+					return { type: 'text', payload: await banCommand(userId || "", mentionedJid) };
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al banear.");
+				}
+
+			case "unban":
+				try {
+					if (!mentionedJid) {
+						throw new Error("❌ Mencioná (@) a quién querés desbanear. Uso: /unban @contacto");
+					}
+					return { type: 'text', payload: await unbanCommand(mentionedJid) };
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al desbanear.");
+				}
+
+			case "admin":
+				try {
+					if (!mentionedJid) {
+						throw new Error("❌ Mencioná (@) a un contacto. Uso: /admin @contacto o /admin remove @contacto");
+					}
+					const esRemove = body.trim().split(" ")[1] === "remove";
+					return {
+						type: 'text',
+						payload: esRemove ? await adminRemoveCommand(mentionedJid) : await adminCommand(mentionedJid),
+					};
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al modificar el rol de admin.");
+				}
+
+			case "set":
+				try {
+					if (!mentionedJid) {
+						throw new Error("❌ Mencioná (@) a un contacto. Uso: /set [nombre_topero] @contacto");
+					}
+					const nombreTopero = body.trim().split(" ")[1];
+					if (!nombreTopero) {
+						throw new Error("❌ Uso: /set [nombre_topero] @contacto");
+					}
+					return { type: 'text', payload: await setToperoCommand(nombreTopero, mentionedJid) };
+				} catch (err: any) {
+					throw new Error(err.message || "❌ Error al vincular el topero.");
 				}
 
 			case "topdiario":

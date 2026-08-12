@@ -5,8 +5,8 @@ import QRCode from "qrcode";
 import fs from "fs/promises";
 import path from "path";
 import { topDiarioCommand, helpAudioCommand, helpImagenCommand } from "../commands";
-import { TopAntipala, Commands } from "../classes";
-import { handleCommand } from "../utils";
+import { TopAntipala, Commands, Topero } from "../classes";
+import { handleCommand, normalizeJid } from "../utils";
 import { DB_PATH } from "../db/database";
 
 const topAntipala = TopAntipala.getInstance();
@@ -22,12 +22,7 @@ function getMessageText(msg: proto.IWebMessageInfo): string {
 }
 
 function getSenderId(msg: proto.IWebMessageInfo): string {
-	const jid = msg.key?.participant || msg.key?.remoteJid || "";
-	return jid.split("@")[0];
-}
-
-function baseJid(jid?: string | null): string {
-	return (jid || "").split(":")[0].split("@")[0];
+	return normalizeJid(msg.key?.participant || msg.key?.remoteJid);
 }
 
 export async function registerSocketEvents(
@@ -76,9 +71,25 @@ export async function registerSocketEvents(
 			const replyJid = msg.key.remoteJid!;
 
 			try {
+				const remitente = await Topero.findByJid(userId);
+				if (remitente?.banned) {
+					if (bodyLower.startsWith("/") || bodyLower.startsWith("top antipala del dia")) {
+						try {
+							await sock.sendMessage(
+								replyJid,
+								{ text: "🚫 Estás baneado y no podés usar el bot." },
+								{ quoted: msg }
+							);
+						} catch (sendError: any) {
+							console.error("⚠️ No se pudo avisar el baneo (conexión caída):", sendError);
+						}
+					}
+					continue;
+				}
+
 				if (bodyLower.startsWith("top antipala del dia")) {
 					try {
-						if (Commands.hasPermission(userId)) {
+						if (await Commands.hasPermission(userId)) {
 							await topDiarioCommand(bodyLower, topAntipala);
 							const reply = await topAntipala.getTopAntipala();
 							console.log("📊 Top Antipala del día registrado.");
@@ -117,17 +128,18 @@ export async function registerSocketEvents(
 									helpMessage = error.message || "❌ Error al obtener la ayuda de /imagen.";
 								}
 							} else {
-								helpMessage = Commands.getInstance().help(userId);
+								helpMessage = await Commands.getInstance().help(userId);
 							}
 							await sock.sendMessage(replyJid, { text: helpMessage }, { quoted: msg });
 							continue;
 						}
 						if (Commands.exists(command)) {
-							Commands.hasPermission(userId, command);
+							await Commands.hasPermission(userId, command);
 							const contextInfo = msg.message?.extendedTextMessage?.contextInfo;
 							const quotedMessage = contextInfo?.quotedMessage;
-							const quotedFromBot = baseJid(contextInfo?.participant) === baseJid(sock.user?.id);
-							const result = await handleCommand(command, bodyLower, quotedMessage, quotedFromBot, userId, body);
+							const quotedFromBot = normalizeJid(contextInfo?.participant) === normalizeJid(sock.user?.id);
+							const mentionedJid = normalizeJid(contextInfo?.mentionedJid?.[0]);
+							const result = await handleCommand(command, bodyLower, quotedMessage, quotedFromBot, userId, body, mentionedJid);
 							console.log(`${userId}\n🔍 Comando ejecutado: ${command}`);
 							try {
 								if (result.type === "text") {
