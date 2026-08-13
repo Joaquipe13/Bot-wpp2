@@ -1,5 +1,5 @@
 import { proto } from '@whiskeysockets/baileys';
-import { audioCommand, pingCommand, repoCommand, sugerirCommand, sugerenciasCommand, chisteCommand, guardarChisteCommand, banCommand, unbanCommand, adminCommand, adminRemoveCommand, setToperoCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, crearAudioCommand, TopAntipalaCommand } from '../commands';
+import { audioCommand, pingCommand, repoCommand, sugerirCommand, sugerenciasCommand, chisteCommand, guardarChisteCommand, banCommand, unbanCommand, adminCommand, adminRemoveCommand, setToperoCommand, crearToperoCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, crearAudioCommand, TopAntipalaCommand } from '../commands';
 import { TopAntipala } from '../classes';
 
 export type CommandResult =
@@ -207,7 +207,10 @@ export async function handleCommand(
 					if (tipo === "audio") {
 						return { type: 'text', payload: await crearAudioCommand(args[2]) };
 					}
-					throw new Error("❌ Uso: /crear audio [nombre_carpeta]");
+					if (tipo === "topero") {
+						return { type: 'text', payload: await crearToperoCommand(args[2], mentionedJid) };
+					}
+					throw new Error("❌ Uso: /crear audio [nombre_carpeta]\no /crear topero [nombre] [@contacto opcional]");
 				} catch (err: any) {
 					throw new Error(err.message || "❌ Error al crear.");
 				}

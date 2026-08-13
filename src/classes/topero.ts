@@ -47,6 +47,15 @@ export class Topero {
 		return row ? Topero.fromRow(row) : null;
 	}
 
+	static async create(name: string, jid: string | null = null): Promise<Topero> {
+		const cleanName = capitalize(name);
+		const db = DatabaseManager.getInstance().getDB();
+		const info = jid
+			? db.prepare("INSERT INTO toperos (name, jid) VALUES (?, ?)").run(cleanName, jid)
+			: db.prepare("INSERT INTO toperos (name) VALUES (?)").run(cleanName);
+		return new Topero(info.lastInsertRowid as number, cleanName, jid);
+	}
+
 	// Usado por /ban y /admin: si el jid todavía no corresponde a ningún topero
 	// (no participa del top diario), se crea una fila propia solo para poder
 	// llevar su rol/ban. Esto no lo suma a ninguna competencia.
