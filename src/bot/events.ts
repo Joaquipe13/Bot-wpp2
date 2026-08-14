@@ -127,6 +127,14 @@ export async function registerSocketEvents(
 								} catch (error: any) {
 									helpMessage = error.message || "❌ Error al obtener la ayuda de /imagen.";
 								}
+							} else if (commandArgs[1]) {
+								const otroComando = Commands.resolveAlias(commandArgs[1]);
+								try {
+									Commands.exists(otroComando);
+									helpMessage = Commands.getUsage(otroComando);
+								} catch (error: any) {
+									helpMessage = error.message || `❌ Error al obtener la ayuda de /${otroComando}.`;
+								}
 							} else {
 								helpMessage = await Commands.getInstance().help(userId);
 							}

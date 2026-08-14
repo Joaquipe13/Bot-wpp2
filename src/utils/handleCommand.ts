@@ -1,6 +1,6 @@
 import { proto } from '@whiskeysockets/baileys';
 import { audioCommand, pingCommand, repoCommand, sugerirCommand, sugerenciasCommand, chisteCommand, guardarChisteCommand, banCommand, unbanCommand, adminCommand, adminRemoveCommand, setToperoCommand, crearToperoCommand, showAllTopsCommand, uploadFinalCommand, uploadAbsencesCommand, guardarAudioCommand, guardarImagenCommand, imagenCommand, editarAudioCommand, editarImagenCommand, crearAudioCommand, TopAntipalaCommand } from '../commands';
-import { TopAntipala } from '../classes';
+import { TopAntipala, Commands } from '../classes';
 
 export type CommandResult =
 	| { type: 'text'; payload: string }
@@ -50,7 +50,7 @@ export async function handleCommand(
 			case "ban":
 				try {
 					if (!mentionedJid) {
-						throw new Error("❌ Mencioná (@) a quién querés banear. Uso: /ban @contacto");
+						throw new Error(`❌ Mencioná (@) a quién querés banear.\n\n${Commands.getUsage("ban")}`);
 					}
 					return { type: 'text', payload: await banCommand(userId || "", mentionedJid) };
 				} catch (err: any) {
@@ -60,7 +60,7 @@ export async function handleCommand(
 			case "unban":
 				try {
 					if (!mentionedJid) {
-						throw new Error("❌ Mencioná (@) a quién querés desbanear. Uso: /unban @contacto");
+						throw new Error(`❌ Mencioná (@) a quién querés desbanear.\n\n${Commands.getUsage("unban")}`);
 					}
 					return { type: 'text', payload: await unbanCommand(mentionedJid) };
 				} catch (err: any) {
@@ -70,7 +70,7 @@ export async function handleCommand(
 			case "admin":
 				try {
 					if (!mentionedJid) {
-						throw new Error("❌ Mencioná (@) a un contacto. Uso: /admin @contacto o /admin remove @contacto");
+						throw new Error(`❌ Mencioná (@) a un contacto.\n\n${Commands.getUsage("admin")}`);
 					}
 					const esRemove = body.trim().split(" ")[1] === "remove";
 					return {
@@ -84,11 +84,11 @@ export async function handleCommand(
 			case "set":
 				try {
 					if (!mentionedJid) {
-						throw new Error("❌ Mencioná (@) a un contacto. Uso: /set [nombre_topero] @contacto");
+						throw new Error(`❌ Mencioná (@) a un contacto.\n\n${Commands.getUsage("set")}`);
 					}
 					const nombreTopero = body.trim().split(" ")[1];
 					if (!nombreTopero) {
-						throw new Error("❌ Uso: /set [nombre_topero] @contacto");
+						throw new Error(`❌ Uso:\n${Commands.getUsage("set")}`);
 					}
 					return { type: 'text', payload: await setToperoCommand(nombreTopero, mentionedJid) };
 				} catch (err: any) {
@@ -143,7 +143,7 @@ export async function handleCommand(
 					const imageMessage = quotedMessage?.imageMessage;
 					if (!audioMessage && !imageMessage) {
 						throw new Error(
-							"❌ Tenés que responder a un audio o una imagen para guardarlo.\nUso: /guardar [carpeta] [nombre] (audio) o /guardar [nombre] (imagen)"
+							`❌ Tenés que responder a un audio o una imagen para guardarlo (o usar /guardar chiste [texto]).\n\n${Commands.getUsage("guardar")}`
 						);
 					}
 					if (quotedFromBot) {
@@ -193,9 +193,7 @@ export async function handleCommand(
 							payload: await editarImagenCommand(nombreViejo, nombreNuevo),
 						};
 					}
-					throw new Error(
-						"❌ Uso: /editar audio [carpeta] [nombre_viejo] [nombre_nuevo]\no /editar imagen [nombre_viejo] [nombre_nuevo]"
-					);
+					throw new Error(`❌ Uso:\n${Commands.getUsage("editar")}`);
 				} catch (err: any) {
 					throw new Error(err.message || "❌ Error al editar.");
 				}
@@ -210,7 +208,7 @@ export async function handleCommand(
 					if (tipo === "topero") {
 						return { type: 'text', payload: await crearToperoCommand(args[2], mentionedJid) };
 					}
-					throw new Error("❌ Uso: /crear audio [nombre_carpeta]\no /crear topero [nombre] [@contacto opcional]");
+					throw new Error(`❌ Uso:\n${Commands.getUsage("crear")}`);
 				} catch (err: any) {
 					throw new Error(err.message || "❌ Error al crear.");
 				}

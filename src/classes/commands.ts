@@ -32,6 +32,35 @@ export class Commands {
 		h: "help",
 		c: "crear",
 	};
+	// Se usa tanto para los errores de "uso incorrecto" como para /help [comando],
+	// así el texto vive en un solo lugar y no se desincroniza entre los dos.
+	private static readonly usage: Record<string, string> = {
+		help: "/help [comando] — muestra cómo usar ese comando.\n/help audio [carpeta] — lista las carpetas o los audios disponibles.\n/help imagen — lista las imágenes disponibles.",
+		ping: "/ping — revisa si el bot está vivo.",
+		repo: "/repo — muestra el link al repositorio del bot y cómo contribuir.",
+		sugerir: "/sugerir [sugerencia] — mandá una idea o sugerencia para el bot.",
+		sugerencias: "/sugerencias — (admin) lista todas las sugerencias mandadas.",
+		chiste: "/chiste — manda un chiste al azar.\n/guardar chiste [texto] — (admin) agrega un chiste nuevo.",
+		topdiario: "/topdiario — muestra el historial completo de tops diarios cargados.",
+		audio: "/audio [carpeta] [nombre] — manda un audio.\nSin nada: uno al azar. Con carpeta: al azar de esa carpeta. Con carpeta y nombre: ese audio puntual.\nUsá /help audio para ver las carpetas.",
+		guardar:
+			"/guardar [carpeta] [nombre] — (admin) respondiendo un audio, lo guarda.\n" +
+			"/guardar [nombre] — (admin) respondiendo una imagen, la guarda (nombre opcional).\n" +
+			"/guardar chiste [texto] — (admin) guarda un chiste nuevo.",
+		imagen: "/imagen [nombre] — manda una imagen.\nSin nada: una al azar.\nUsá /help imagen para ver los nombres disponibles.",
+		editar:
+			"/editar audio [carpeta] [nombre_viejo] [nombre_nuevo] — (admin) renombra un audio.\n" +
+			"/editar imagen [nombre_viejo] [nombre_nuevo] — (admin) renombra una imagen.",
+		crear:
+			"/crear audio [nombre_carpeta] — (admin) crea una carpeta de audios.\n" +
+			"/crear topero [nombre] [@contacto opcional] — (admin) crea un topero, opcionalmente vinculado a un número.",
+		final: "/final [nombre] materia:[texto] nota:[número] fecha:dd/mm/aaaa — (admin) carga un final rendido.",
+		top: "/top [AAAA-C] — muestra el ranking del Top Antipala.\nSin nada: el período actual. Ejemplo: /top 2026-1",
+		ban: "/ban @contacto — (admin) banea a un contacto; no puede usar el bot hasta que lo desbaneen.",
+		unban: "/unban @contacto — (admin) desbanea a un contacto.",
+		admin: "/admin @contacto — (owner) da rol de admin a un contacto.\n/admin remove @contacto — (owner) le quita el rol de admin.",
+		set: "/set [nombre_topero] @contacto — (admin) vincula un número de teléfono a un topero que ya existe.",
+	};
 	// Dueños fijos del bot, definidos en código (no en la DB) para que siempre
 	// haya alguien capaz de otorgar el primer admin aunque la tabla toperos esté vacía.
 	// El owner es superior a admin: puede dar/quitar admin y banear admins.
@@ -51,6 +80,10 @@ export class Commands {
 
 	public static isOwner(userId: string): boolean {
 		return Commands.owners.includes(userId);
+	}
+
+	public static getUsage(cmd: string): string {
+		return Commands.usage[cmd] || `No hay ayuda específica para '/${cmd}'.`;
 	}
 
 	public static exists(cmd: string): boolean {
