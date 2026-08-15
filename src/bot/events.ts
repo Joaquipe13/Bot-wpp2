@@ -87,6 +87,17 @@ export async function registerSocketEvents(
 					continue;
 				}
 
+				if (/^hola\b/i.test(bodyLower)) {
+					try {
+						const nombre = await Commands.displayName(userId);
+						const saludo = nombre ? `Hola ${nombre}!` : "Hola!";
+						await sock.sendMessage(replyJid, { text: saludo }, { quoted: msg });
+					} catch (error: any) {
+						console.error("⚠️ Error al saludar:", error);
+					}
+					continue;
+				}
+
 				if (bodyLower.startsWith("top antipala del dia")) {
 					try {
 						if (await Commands.hasPermission(userId)) {

@@ -65,6 +65,10 @@ export class Commands {
 	// haya alguien capaz de otorgar el primer admin aunque la tabla toperos esté vacía.
 	// El owner es superior a admin: puede dar/quitar admin y banear admins.
 	private static readonly owners: string[] = ["222359231398085"];
+	// Nombre a mostrar para cada owner (no vive en toperos, así que se resuelve acá).
+	private static readonly ownerNames: Record<string, string> = {
+		"222359231398085": "Joaquin",
+	};
 	private constructor() {}
 
 	public static getInstance(): Commands {
@@ -80,6 +84,15 @@ export class Commands {
 
 	public static isOwner(userId: string): boolean {
 		return Commands.owners.includes(userId);
+	}
+
+	// Nombre de "topero" para saludos/mensajes a partir de un jid: el owner
+	// tiene nombre fijo en código (no está en la tabla toperos), y si no, se
+	// busca el topero vinculado a ese número. Devuelve null si no hay nada.
+	public static async displayName(userId: string): Promise<string | null> {
+		if (Commands.ownerNames[userId]) return Commands.ownerNames[userId];
+		const topero = await Topero.findByJid(userId);
+		return topero ? topero.name : null;
 	}
 
 	public static getUsage(cmd: string): string {
