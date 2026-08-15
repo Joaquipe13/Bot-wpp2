@@ -54,6 +54,13 @@ export async function registerSocketEvents(
 		} else if (connection === "open") {
 			console.log("🔐 Autenticado con éxito. Bot listo.");
 			await fs.unlink(QR_PATH).catch(() => {});
+			for (const ownerJid of Commands.getOwnerJids()) {
+				try {
+					await sock.sendMessage(ownerJid, { text: "🤖 El bot se conectó y está listo." });
+				} catch (error) {
+					console.error("⚠️ No se pudo avisar al owner que el bot se conectó:", error);
+				}
+			}
 		}
 	});
 

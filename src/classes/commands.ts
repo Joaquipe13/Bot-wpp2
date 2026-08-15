@@ -86,6 +86,12 @@ export class Commands {
 		return Commands.owners.includes(userId);
 	}
 
+	// JIDs completos de los owners, listos para mandarles un mensaje directo
+	// (Commands.owners guarda solo el número, que es lo que se compara contra userId).
+	public static getOwnerJids(): string[] {
+		return Commands.owners.map((jid) => `${jid}@s.whatsapp.net`);
+	}
+
 	// Nombre de "topero" para saludos/mensajes a partir de un jid: el owner
 	// tiene nombre fijo en código (no está en la tabla toperos), y si no, se
 	// busca el topero vinculado a ese número. Devuelve null si no hay nada.
