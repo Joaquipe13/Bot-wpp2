@@ -1,10 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { MEMES_DIR } from '../utils';
-
-function sanitizeFileName(nombre: string): string {
-	return nombre.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-}
+import { MEMES_DIR, sanitizeFileName, fileExists } from '../utils';
 
 export async function editarImagenCommand(nombreViejo: string, nombreNuevo: string): Promise<string> {
 	const viejoLimpio = sanitizeFileName(nombreViejo || '');
@@ -23,11 +19,7 @@ export async function editarImagenCommand(nombreViejo: string, nombreNuevo: stri
 	const rutaVieja = path.join(MEMES_DIR, archivoViejo);
 	const rutaNueva = path.join(MEMES_DIR, `${nuevoLimpio}${ext}`);
 
-	const existeNuevo = await fs
-		.access(rutaNueva)
-		.then(() => true)
-		.catch(() => false);
-	if (existeNuevo) {
+	if (await fileExists(rutaNueva)) {
 		throw new Error(`❌ Ya existe una imagen "${nuevoLimpio}". Elegí otro nombre.`);
 	}
 

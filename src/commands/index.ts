@@ -19,6 +19,5 @@ export {editarAudioCommand} from './editarAudio';
 export {crearAudioCommand} from './crearAudio';
 export {editarImagenCommand} from './editarImagen';
 export {showAllTopsCommand} from './showAllTops';
-export {showTopOfCommand} from './showTopOf';
 export {uploadFinalCommand} from './uploadFinal';
 export {uploadAbsencesCommand} from './uploadAbsences';

@@ -1,10 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { getFoldersInPath, AUDIOS_DIR } from '../utils';
-
-function sanitizeFileName(nombre: string): string {
-	return nombre.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-}
+import { getFoldersInPath, AUDIOS_DIR, sanitizeFileName, fileExists } from '../utils';
 
 export async function editarAudioCommand(
 	carpeta: string,
@@ -27,21 +23,13 @@ export async function editarAudioCommand(
 	const rutaVieja = path.join(AUDIOS_DIR, carpeta, `${viejoLimpio}.ogg`);
 	const rutaNueva = path.join(AUDIOS_DIR, carpeta, `${nuevoLimpio}.ogg`);
 
-	const existeViejo = await fs
-		.access(rutaVieja)
-		.then(() => true)
-		.catch(() => false);
-	if (!existeViejo) {
+	if (!(await fileExists(rutaVieja))) {
 		throw new Error(
 			`❌ No existe el audio "${viejoLimpio}" en "${carpeta}". Usá /help audio ${carpeta} para ver los disponibles.`
 		);
 	}
 
-	const existeNuevo = await fs
-		.access(rutaNueva)
-		.then(() => true)
-		.catch(() => false);
-	if (existeNuevo) {
+	if (await fileExists(rutaNueva)) {
 		throw new Error(`❌ Ya existe un audio "${nuevoLimpio}" en "${carpeta}". Elegí otro nombre.`);
 	}
 

@@ -1,5 +1,5 @@
 import { Topero } from "./topero";
-import { capitalize, parseDate } from "../utils";
+import { capitalize } from "../utils";
 import DatabaseManager from "../db/database";
 import { PeriodManager } from "./cuatrimestre";
 
@@ -99,7 +99,6 @@ export class TopAntipala {
 				`❌ Flasheaste cualquiera con: ${faltantes.join(", ")}.\nEscribi bien mogolico.`
 			);
 		}
-		console.log(encontrados);
 		return encontrados;
 	}
 
@@ -135,32 +134,5 @@ export class TopAntipala {
 
 		this.topList = result.join("\n\n");
 		return this.topList;
-	}
-
-	public async getTopAntipalaByDate(date_top: string): Promise<string> {
-		const db = this.getDB();
-		const dateParsed = parseDate(date_top);
-		const dateStr = dateParsed.toISOString().split("T")[0];
-
-		const rows = db
-			.prepare(`
-				SELECT t.name, dt.points
-				FROM top_diario_toperos dt
-				JOIN top_diarios d ON d.id = dt.top_diario_id
-				JOIN toperos t ON t.id = dt.topero_id
-				WHERE d.date_top = ?
-				ORDER BY dt.posicion
-			`)
-			.all(dateStr) as Array<{ name: string; points: number }>;
-
-		if (rows.length === 0) {
-			return `📉 No hay registros para el Top Antipala del ${dateStr}.`;
-		}
-
-		let mensaje = `🔝 Top Antipala del ${dateStr}:\n`;
-		rows.forEach((row, index) => {
-			mensaje += `${index + 1}. ${row.name} (${row.points} pts)\n`;
-		});
-		return mensaje.trim();
 	}
 }

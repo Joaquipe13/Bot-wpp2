@@ -1,11 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { proto, downloadContentFromMessage } from '@whiskeysockets/baileys';
-import { MEMES_DIR } from '../utils';
-
-function sanitizeFileName(nombre: string): string {
-	return nombre.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-}
+import { MEMES_DIR, sanitizeFileName, fileExists } from '../utils';
 
 function extensionFromMimetype(mimetype?: string | null): string {
 	if (mimetype?.includes('png')) return 'png';
@@ -34,11 +30,7 @@ export async function guardarImagenCommand(
 	const fileName = `${nombre}.${extensionFromMimetype(imageMessage.mimetype)}`;
 	const filePath = path.join(MEMES_DIR, fileName);
 
-	const yaExiste = await fs
-		.access(filePath)
-		.then(() => true)
-		.catch(() => false);
-	if (yaExiste) {
+	if (await fileExists(filePath)) {
 		throw new Error(`❌ Ya existe una imagen "${fileName}". Elegí otro nombre.`);
 	}
 

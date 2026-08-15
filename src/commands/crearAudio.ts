@@ -1,13 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { getFoldersInPath, AUDIOS_DIR } from '../utils';
-
-function sanitizeFolderName(nombre: string): string {
-	return nombre.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-}
+import { getFoldersInPath, AUDIOS_DIR, sanitizeFileName } from '../utils';
 
 export async function crearAudioCommand(nombreCarpeta: string): Promise<string> {
-	const nombreLimpio = sanitizeFolderName(nombreCarpeta || '');
+	const nombreLimpio = sanitizeFileName(nombreCarpeta || '');
 	if (!nombreLimpio) {
 		throw new Error('❌ Uso: /crear audio [nombre_carpeta]');
 	}

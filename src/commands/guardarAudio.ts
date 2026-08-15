@@ -1,11 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { proto, downloadContentFromMessage } from '@whiskeysockets/baileys';
-import { getFoldersInPath, AUDIOS_DIR } from '../utils';
-
-function sanitizeFileName(nombre: string): string {
-	return nombre.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-}
+import { getFoldersInPath, AUDIOS_DIR, sanitizeFileName, fileExists } from '../utils';
 
 export async function guardarAudioCommand(
 	nombreCarpeta: string,
@@ -31,11 +27,7 @@ export async function guardarAudioCommand(
 	const fileName = `${nombreLimpio}.ogg`;
 	const filePath = path.join(AUDIOS_DIR, nombreCarpeta, fileName);
 
-	const yaExiste = await fs
-		.access(filePath)
-		.then(() => true)
-		.catch(() => false);
-	if (yaExiste) {
+	if (await fileExists(filePath)) {
 		throw new Error(`❌ Ya existe un audio "${fileName}" en "${nombreCarpeta}". Elegí otro nombre.`);
 	}
 
