@@ -4,8 +4,8 @@ import qrcode from "qrcode-terminal";
 import QRCode from "qrcode";
 import fs from "fs/promises";
 import path from "path";
-import { topDiarioCommand, helpAudioCommand, helpImagenCommand } from "../commands";
-import { TopAntipala, Commands, Topero } from "../classes";
+import { topDiarioCommand, helpAudioCommand, helpImagenCommand, statsToperoCommand } from "../commands";
+import { TopAntipala, Commands, Topero, ComandoUso } from "../classes";
 import { handleCommand, normalizeJid } from "../utils";
 import { DB_PATH } from "../db/database";
 
@@ -132,6 +132,7 @@ export async function registerSocketEvents(
 						const commandArgs = bodyLower.trim().split(/\s+/);
 						const command = Commands.resolveAlias(commandArgs[0].slice(1));
 						if (command === "help") {
+							ComandoUso.registrar(userId, replyJid, "help");
 							let helpMessage: string;
 							if (commandArgs[1] === "audio") {
 								try {
@@ -159,13 +160,14 @@ export async function registerSocketEvents(
 							await sock.sendMessage(replyJid, { text: helpMessage }, { quoted: msg });
 							continue;
 						}
-						if (Commands.exists(command)) {
+						if (Commands.isRegistered(command)) {
 							await Commands.hasPermission(userId, command);
 							const contextInfo = msg.message?.extendedTextMessage?.contextInfo;
 							const quotedMessage = contextInfo?.quotedMessage;
 							const quotedFromBot = normalizeJid(contextInfo?.participant) === normalizeJid(sock.user?.id);
 							const mentionedJid = normalizeJid(contextInfo?.mentionedJid?.[0]);
 							const result = await handleCommand(command, bodyLower, quotedMessage, quotedFromBot, userId, body, mentionedJid);
+							ComandoUso.registrar(userId, replyJid, command);
 							const ahora = new Date();
 							const hora = `${String(ahora.getHours()).padStart(2, "0")}:${String(ahora.getMinutes()).padStart(2, "0")}`;
 							const nombreTopero = await Commands.displayName(userId);
@@ -199,6 +201,15 @@ export async function registerSocketEvents(
 								}
 							} catch (sendError: any) {
 								console.error("⚠️ Falló el envío de audio/imagen (conexión inestable):", sendError);
+							}
+						} else {
+							// No es un comando registrado: puede ser el nombre de un topero
+							// (ej: /choco), consultando sus estadísticas de uso en este grupo.
+							const stats = await statsToperoCommand(command, replyJid);
+							if (stats === null) {
+								Commands.exists(command);
+							} else {
+								await sock.sendMessage(replyJid, { text: stats }, { quoted: msg });
 							}
 						}
 					} catch (error: any) {

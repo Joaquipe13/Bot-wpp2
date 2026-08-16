@@ -105,8 +105,12 @@ export class Commands {
 		return Commands.usage[cmd] || `No hay ayuda específica para '/${cmd}'.`;
 	}
 
+	public static isRegistered(cmd: string): boolean {
+		return cmd in Commands.commands;
+	}
+
 	public static exists(cmd: string): boolean {
-		if (cmd in Commands.commands) return true;
+		if (Commands.isRegistered(cmd)) return true;
 		throw new Error(`El comando '/${cmd}' no existe.\n\nUse '/help' para ver la lista de comandos disponibles.`);
 	}
 

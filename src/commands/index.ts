@@ -9,6 +9,7 @@ export {banCommand, unbanCommand} from './ban';
 export {adminCommand, adminRemoveCommand} from './admin';
 export {setToperoCommand} from './setTopero';
 export {crearToperoCommand} from './crearTopero';
+export {statsToperoCommand} from './statsTopero';
 export {audioCommand} from './audio';
 export {helpAudioCommand} from './helpAudio';
 export {helpImagenCommand} from './helpImagen';

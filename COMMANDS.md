@@ -24,6 +24,7 @@ Para saber cómo se usa cualquier comando sin salir del chat, mandá **`/help [c
 | `/unban` | — | Admin | Desbanea a un contacto |
 | `/set` | — | Admin | Vincula un número a un topero ya existente |
 | `/admin` | — | Owner | Da o quita el rol de admin a un contacto |
+| `/[nombre_topero]` | — | Todos | Muestra las estadísticas de uso de ese topero en el grupo |
 
 ---
 
@@ -339,6 +340,30 @@ Falla si el topero no existe, o si ese contacto ya está vinculado a otro topero
 
 ---
 
+## `/[nombre_topero]`
+
+No es un comando fijo — es el nombre de cualquier topero que ya exista, usado como si fuera un comando. Devuelve, para **este grupo puntual**, cuántos comandos usó esa persona en total y cuál es el que más usó.
+
+```
+/[nombre_topero]
+```
+
+Ejemplo:
+```
+/Choco
+```
+```
+📊 Estadísticas de Choco en este grupo:
+Comandos usados: 14
+Comando más usado: /audio (9 veces)
+```
+
+Para que funcione, el topero tiene que estar vinculado a un número con `/set` — si no, avisa que no hay estadísticas para mostrar. Y si el nombre coincide con un comando real (por ejemplo, si hubiera un topero llamado "Top"), siempre gana el comando: esta consulta solo se activa cuando lo que escribiste no es ningún comando existente.
+
+El conteo incluye cualquier `/comando` real que se haya ejecutado (incluido `/help`), contando alias y variantes con argumentos como el mismo comando — `/a`, `/audio` y `/audio choco en_10` suman los tres al contador de `/audio`. No cuenta el registro de "Top antipala del dia" ni esta misma consulta.
+
+---
+
 ## Cargar un top diario (sin `/`)
 
 No es un comando con barra — es un mensaje de texto con este formato exacto, mandado directo al grupo:
@@ -358,5 +383,5 @@ El bot lo detecta automáticamente, registra las posiciones de ese día y respon
 
 - Las abreviaturas (`/a`, `/i`, `/e`, `/g`, `/h`, `/c`) funcionan exactamente igual que el comando completo, incluidos los permisos — `/g` requiere ser admin igual que `/guardar`.
 - Los nombres de carpetas, audios e imágenes se guardan siempre en minúsculas y sin caracteres raros (solo letras, números, `_` y `-`) aunque los escribas distinto.
-- Los nombres de topero se normalizan a "Primera letra mayúscula, resto minúscula" (`choco` y `CHOCO` son el mismo topero que `Choco`).
+- Los nombres de topero no distinguen mayúsculas de minúsculas al buscarlos (`choco`, `Choco` y `CHOCO` son el mismo topero), y el bot siempre los muestra con la inicial de cada palabra en mayúscula (`Juan Caballo`), sin importar cómo estén guardados internamente. Los toperos ya cargados no se tocan; esto solo aplica a los nuevos.
 - Si un comando falla, el bot responde con el motivo del error (carpeta inexistente, formato inválido, sin permisos, etc.) citando tu mensaje.

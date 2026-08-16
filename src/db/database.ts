@@ -75,6 +75,13 @@ class DatabaseManager {
 				texto TEXT NOT NULL,
 				created_at TEXT NOT NULL DEFAULT (datetime('now'))
 			);
+			CREATE TABLE IF NOT EXISTS comando_usos (
+				jid TEXT NOT NULL,
+				group_jid TEXT NOT NULL,
+				command TEXT NOT NULL,
+				count INTEGER NOT NULL DEFAULT 0,
+				PRIMARY KEY (jid, group_jid, command)
+			);
 		`);
 	}
 
