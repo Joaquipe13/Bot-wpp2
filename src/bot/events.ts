@@ -54,13 +54,6 @@ export async function registerSocketEvents(
 		} else if (connection === "open") {
 			console.log("🔐 Autenticado con éxito. Bot listo.");
 			await fs.unlink(QR_PATH).catch(() => {});
-			for (const ownerJid of Commands.getOwnerJids()) {
-				try {
-					await sock.sendMessage(ownerJid, { text: "🤖 El bot se conectó y está listo." });
-				} catch (error) {
-					console.error("⚠️ No se pudo avisar al owner que el bot se conectó:", error);
-				}
-			}
 		}
 	});
 
@@ -94,6 +87,7 @@ export async function registerSocketEvents(
 					continue;
 				}
 
+				/* 
 				if (/^hola\b/i.test(bodyLower)) {
 					try {
 						const nombre = await Commands.displayName(userId);
@@ -103,7 +97,8 @@ export async function registerSocketEvents(
 						console.error("⚠️ Error al saludar:", error);
 					}
 					continue;
-				}
+				} 
+				*/
 
 				if (bodyLower.startsWith("top antipala del dia")) {
 					try {
