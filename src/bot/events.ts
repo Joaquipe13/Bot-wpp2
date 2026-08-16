@@ -166,7 +166,10 @@ export async function registerSocketEvents(
 							const quotedFromBot = normalizeJid(contextInfo?.participant) === normalizeJid(sock.user?.id);
 							const mentionedJid = normalizeJid(contextInfo?.mentionedJid?.[0]);
 							const result = await handleCommand(command, bodyLower, quotedMessage, quotedFromBot, userId, body, mentionedJid);
-							console.log(`${userId}\n🔍 Comando ejecutado: ${command}`);
+							const ahora = new Date();
+							const hora = `${String(ahora.getHours()).padStart(2, "0")}:${String(ahora.getMinutes()).padStart(2, "0")}`;
+							const nombreTopero = await Commands.displayName(userId);
+							console.log(`${hora} ${userId}${nombreTopero ? ` [${nombreTopero}]` : ""} {${replyJid}}\n🔍 Comando ejecutado: ${command}`);
 							try {
 								if (result.type === "text") {
 									await sock.sendMessage(
