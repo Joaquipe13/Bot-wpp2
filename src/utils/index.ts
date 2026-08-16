@@ -1,4 +1,4 @@
-export {capitalize} from './capitalize';
+export {toTitleCase} from './toTitleCase';
 export {log} from './logger';
 export {parseDate} from './parseDate';
 export {parseTop} from './parseTop';

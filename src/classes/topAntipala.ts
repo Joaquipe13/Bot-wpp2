@@ -1,5 +1,5 @@
 import { Topero } from "./topero";
-import { capitalize } from "../utils";
+import { toTitleCase } from "../utils";
 import DatabaseManager from "../db/database";
 import { PeriodManager } from "./cuatrimestre";
 
@@ -68,7 +68,7 @@ export class TopAntipala {
 			const cuatri = cuatriNum === "1" ? "1er cuatrimestre" : "2do cuatrimestre";
 			let mensaje = `🔝 Top Antipala ${cuatri} ${anio}:\n`;
 			rows.forEach((row, index) => {
-				mensaje += `${index + 1}. ${row.name} (${row.total_points} pts)\n`;
+				mensaje += `${index + 1}. ${toTitleCase(row.name)} (${row.total_points} pts)\n`;
 			});
 			this.tops[period] = mensaje.trim();
 			return mensaje.trim();
@@ -81,19 +81,21 @@ export class TopAntipala {
 		if (nombres.length === 0) {
 			throw new Error("❌ No ha nadie en el top gil.");
 		}
-		const capitalizedNames = nombres.map((n) => capitalize(n));
+		const nombresLimpios = nombres.map((n) => n.trim());
 		const db = this.getDB();
-		const placeholders = capitalizedNames.map(() => "?").join(",");
+		const placeholders = nombresLimpios.map(() => "?").join(",");
+		// COLLATE NOCASE: "juan", "Juan" y "JUAN" tienen que matchear el mismo topero
+		// sin importar cómo esté guardado su nombre.
 		const rows = db
-			.prepare(`SELECT id, name FROM toperos WHERE name IN (${placeholders})`)
-			.all(...capitalizedNames) as Array<{ id: number; name: string }>;
+			.prepare(`SELECT id, name FROM toperos WHERE name COLLATE NOCASE IN (${placeholders})`)
+			.all(...nombresLimpios) as Array<{ id: number; name: string }>;
 
-		const encontradosMap = new Map(rows.map((r) => [r.name, new Topero(r.id, r.name)]));
-		const encontrados = capitalizedNames
-			.map((n) => encontradosMap.get(n))
+		const encontradosMap = new Map(rows.map((r) => [r.name.toLowerCase(), new Topero(r.id, r.name)]));
+		const encontrados = nombresLimpios
+			.map((n) => encontradosMap.get(n.toLowerCase()))
 			.filter(Boolean) as Topero[];
 
-		const faltantes = capitalizedNames.filter((n) => !encontradosMap.has(n));
+		const faltantes = nombresLimpios.filter((n) => !encontradosMap.has(n.toLowerCase()));
 		if (faltantes.length > 0) {
 			throw new Error(
 				`❌ Flasheaste cualquiera con: ${faltantes.join(", ")}.\nEscribi bien mogolico.`
@@ -128,7 +130,7 @@ export class TopAntipala {
 		}
 
 		const result = Object.entries(grouped).map(([date, entries]) => {
-			const lines = entries.map((e) => `${e.posicion} ${e.name}`).join("\n");
+			const lines = entries.map((e) => `${e.posicion} ${toTitleCase(e.name)}`).join("\n");
 			return `Top antipala del dia ${date}:\n${lines}`;
 		});
 

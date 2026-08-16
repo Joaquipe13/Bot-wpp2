@@ -1,5 +1,5 @@
 import DatabaseManager from "../db/database";
-import { capitalize } from "../utils";
+import { toTitleCase } from "../utils";
 
 type Role = "common" | "admin";
 
@@ -20,7 +20,10 @@ export class Topero {
 
 	constructor(id: number, name: string, jid: string | null = null, role: Role = "common", banned: boolean = false) {
 		this.id = id;
-		this.name = name;
+		// Se normaliza acá para que cualquier forma de obtener un Topero (buscarlo,
+		// crearlo) muestre siempre el mismo formato, sin importar cómo esté
+		// guardado el nombre en la base (eso no se toca).
+		this.name = toTitleCase(name);
 		this.jid = jid;
 		this.role = role;
 		this.banned = banned;
@@ -31,11 +34,12 @@ export class Topero {
 	}
 
 	static async findByName(name: string): Promise<Topero | null> {
-		name = capitalize(name);
 		const db = DatabaseManager.getInstance().getDB();
+		// COLLATE NOCASE compara sin importar mayúsculas/minúsculas contra el nombre
+		// tal cual está guardado (sea cual sea el formato con el que se cargó antes).
 		const row = db
-			.prepare("SELECT id, name, jid, role, banned FROM toperos WHERE name = ?")
-			.get(name) as ToperoRow | undefined;
+			.prepare("SELECT id, name, jid, role, banned FROM toperos WHERE name = ? COLLATE NOCASE")
+			.get(name.trim()) as ToperoRow | undefined;
 		return row ? Topero.fromRow(row) : null;
 	}
 
@@ -48,7 +52,7 @@ export class Topero {
 	}
 
 	static async create(name: string, jid: string | null = null): Promise<Topero> {
-		const cleanName = capitalize(name);
+		const cleanName = toTitleCase(name);
 		const db = DatabaseManager.getInstance().getDB();
 		const info = jid
 			? db.prepare("INSERT INTO toperos (name, jid) VALUES (?, ?)").run(cleanName, jid)
