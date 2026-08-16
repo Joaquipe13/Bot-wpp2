@@ -1,6 +1,7 @@
 import DatabaseManager from "./db/database";
 import dotenv from "dotenv";
 import { createSocket, registerSocketEvents } from "./bot";
+import { Commands } from "./classes";
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ process.on("uncaughtException", (error) => {
 async function main() {
 	DatabaseManager.getInstance();
 	console.log("✅ Base de datos lista y bot inicializado");
+	await Commands.ensureOwnerToperos();
 
 	async function startBot() {
 		try {

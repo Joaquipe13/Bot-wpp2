@@ -101,6 +101,27 @@ export class Commands {
 		return topero ? topero.name : null;
 	}
 
+	// Se corre al iniciar el bot: cada owner con nombre definido en ownerNames
+	// tiene que tener un topero vinculado a su número. Si ya hay uno vinculado
+	// no se toca; si existe un topero con ese nombre pero sin jid, se vincula
+	// (arregla el caso "Joaquin sin vincular"); si no existe ninguno, se crea.
+	public static async ensureOwnerToperos(): Promise<void> {
+		for (const [jid, name] of Object.entries(Commands.ownerNames)) {
+			const yaVinculado = await Topero.findByJid(jid);
+			if (yaVinculado) continue;
+
+			const existente = await Topero.findByName(name);
+			if (existente) {
+				existente.setJid(jid);
+				console.log(`🔗 Topero "${existente.name}" vinculado al owner.`);
+				continue;
+			}
+
+			await Topero.create(name, jid);
+			console.log(`✅ Topero "${name}" creado para el owner.`);
+		}
+	}
+
 	public static getUsage(cmd: string): string {
 		return Commands.usage[cmd] || `No hay ayuda específica para '/${cmd}'.`;
 	}
