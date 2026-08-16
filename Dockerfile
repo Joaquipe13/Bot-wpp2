@@ -30,17 +30,19 @@ WORKDIR /app
 # CLI de sqlite3 para poder consultar/cargar datos a mano en /app/data/data.db
 RUN apk add --no-cache sqlite
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY audios ./audios
-COPY package.json ./
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S botuser -u 1001 -G nodejs
+
+# --chown asigna el dueño durante la copia (sin recorrer el árbol aparte),
+# así node_modules (lo pesado) solo se re-chownea cuando esa capa cambia de
+# verdad, no en cada build por un cambio de código en src/.
+COPY --from=deps --chown=botuser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=botuser:nodejs /app/dist ./dist
+COPY --chown=botuser:nodejs audios ./audios
+COPY --chown=botuser:nodejs package.json ./
 
 # Directorio montado como volumen en runtime (DB + sesión de WhatsApp, ambas en SQLite)
-RUN mkdir -p /app/data
-
-RUN addgroup -g 1001 -S nodejs \
-    && adduser -S botuser -u 1001 -G nodejs \
-    && chown -R botuser:nodejs /app
+RUN mkdir -p /app/data && chown botuser:nodejs /app/data
 
 USER botuser
 ENV NODE_ENV=production
