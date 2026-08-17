@@ -4,6 +4,7 @@ export {parseDate} from './parseDate';
 export {parseTop} from './parseTop';
 export {getFoldersInPath} from './getFoldersInPath';
 export {normalizeJid} from './normalizeJid';
+export {removeAccents} from './removeAccents';
 export {sanitizeFileName} from './sanitizeFileName';
 export {fileExists} from './fileExists';
 export {AUDIOS_DIR} from './audiosDir';

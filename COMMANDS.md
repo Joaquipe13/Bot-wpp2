@@ -366,16 +366,46 @@ El conteo incluye cualquier `/comando` real que se haya ejecutado (incluido `/he
 
 ## Cargar un top diario (sin `/`)
 
-No es un comando con barra — es un mensaje de texto con este formato exacto, mandado directo al grupo:
+No es un comando con barra — es un mensaje de texto mandado directo al grupo, que empieza con "Top antipala del día" (la tilde es opcional, "dia" también funciona) y sigue con la lista de posiciones:
 
 ```
-Top antipala del dia dd/mm/aaaa
+Top antipala del día
 1 Nombre
 2 Nombre
 3 Nombre
 ```
 
-El bot lo detecta automáticamente, registra las posiciones de ese día y responde con el Top Antipala actualizado. Los nombres tienen que coincidir con toperos que ya existen en la base. Solo lo puede registrar un admin u owner.
+El día al que corresponde ese top se indica (o no) en la primera línea, de cuatro formas posibles:
+
+- **`Top antipala del día`** (sin nada más) → el top es de hoy.
+- **`Top antipala del día ayer`** → el top es de ayer.
+- **`Top antipala del día [día de la semana]`** (ej: `viernes`) → la ocurrencia más reciente de ese día (hoy incluido si coincide), nunca una fecha futura.
+- **`Top antipala del día [dd/mm]`** o **`Top antipala del día [dd/mm/aaaa]`** → una fecha puntual. Si no ponés el año, se toma el actual.
+
+Ejemplos:
+```
+Top antipala del día
+1 Munné
+2 Lucas
+3 Seba
+
+Top antipala del día ayer
+1 Munné
+2 Lucas
+3 Seba
+
+Top antipala del día viernes
+1 Tomy
+2 Lucas
+3 Maxi
+
+Top antipala del día 17/08
+1 Tomy
+2 Lucas
+3 Maxi
+```
+
+No hace falta que sea un top 3 — puede tener tantas posiciones como se necesite. El bot lo detecta automáticamente, registra las posiciones de ese día y responde con el Top Antipala actualizado. Los nombres tienen que coincidir con toperos que ya existen en la base (no distingue mayúsculas de minúsculas). Solo lo puede registrar un admin u owner.
 
 ---
 

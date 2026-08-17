@@ -6,7 +6,7 @@ import fs from "fs/promises";
 import path from "path";
 import { topDiarioCommand, helpAudioCommand, helpImagenCommand, statsToperoCommand } from "../commands";
 import { TopAntipala, Commands, Topero, ComandoUso, Reconexion } from "../classes";
-import { handleCommand, normalizeJid } from "../utils";
+import { handleCommand, normalizeJid, removeAccents } from "../utils";
 import { DB_PATH } from "../db/database";
 import { usuarioExcedeLimite, botSuperoLimiteGlobal, registrarMensajeEnviado, delayHumano } from "./rateLimiter";
 
@@ -144,13 +144,16 @@ export async function registerSocketEvents(
 			if (!body) continue;
 
 			const bodyLower = body.toLowerCase();
+			// "top antipala del dia" también dispara con tilde ("día"); se compara
+			// sin acentos para no tener que repetir el chequeo dos veces.
+			const bodySinAcentos = removeAccents(bodyLower);
 			const userId = getSenderId(msg);
 			const replyJid = msg.key.remoteJid!;
 
 			try {
 				const remitente = await Topero.findByJid(userId);
 				if (remitente?.banned) {
-					if (bodyLower.startsWith("/") || bodyLower.startsWith("top antipala del dia")) {
+					if (bodyLower.startsWith("/") || bodySinAcentos.startsWith("top antipala del dia")) {
 						try {
 							await enviarMensaje(
 								sock,
@@ -183,7 +186,7 @@ export async function registerSocketEvents(
 				} 
 				*/
 
-				if (bodyLower.startsWith("top antipala del dia")) {
+				if (bodySinAcentos.startsWith("top antipala del dia")) {
 					try {
 						if (await Commands.hasPermission(userId)) {
 							await topDiarioCommand(bodyLower, topAntipala);
