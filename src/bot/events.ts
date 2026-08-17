@@ -5,12 +5,44 @@ import QRCode from "qrcode";
 import fs from "fs/promises";
 import path from "path";
 import { topDiarioCommand, helpAudioCommand, helpImagenCommand, statsToperoCommand } from "../commands";
-import { TopAntipala, Commands, Topero, ComandoUso } from "../classes";
+import { TopAntipala, Commands, Topero, ComandoUso, Reconexion } from "../classes";
 import { handleCommand, normalizeJid } from "../utils";
 import { DB_PATH } from "../db/database";
+import { usuarioExcedeLimite, botSuperoLimiteGlobal, registrarMensajeEnviado, delayHumano } from "./rateLimiter";
 
 const topAntipala = TopAntipala.getInstance();
 const QR_PATH = path.join(path.dirname(DB_PATH), "qr.png");
+
+// Backoff de reconexión: WhatsApp banea temporalmente cuentas que reconectan
+// en loop instantáneo al perder la conexión, así que antes de cada intento se
+// espera cada vez más. Este contador vive a nivel de módulo (no dentro de
+// registerSocketEvents) para que persista entre sockets sucesivos dentro del
+// mismo proceso, ya que se vuelve a llamar en cada reconexión.
+const RECONNECT_BASE_DELAY_MS = 5_000; // 5s en el primer intento
+const RECONNECT_MAX_DELAY_MS = 5 * 60_000; // tope de 5 min mientras se duplica
+const RECONNECT_LONG_DELAY_MS = 30 * 60_000; // 30 min pasados los 10 intentos
+const RECONNECT_LONG_DELAY_THRESHOLD = 10;
+
+const BAN_WAIT_MS = 8 * 60 * 60_000; // 8h si WhatsApp devuelve un código de ban
+const DAILY_LIMIT_WAIT_MS = 2 * 60 * 60_000; // 2h si ya hubo demasiadas reconexiones hoy
+const DAILY_LIMIT_THRESHOLD = 5; // más de esto en 24hs dispara el modo espera
+
+let intentosReconexionFallidos = 0;
+
+function calcularDelayReconexion(): number {
+	intentosReconexionFallidos++;
+	if (intentosReconexionFallidos > RECONNECT_LONG_DELAY_THRESHOLD) {
+		return RECONNECT_LONG_DELAY_MS;
+	}
+	return Math.min(
+		RECONNECT_BASE_DELAY_MS * 2 ** (intentosReconexionFallidos - 1),
+		RECONNECT_MAX_DELAY_MS
+	);
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function getMessageText(msg: proto.IWebMessageInfo): string {
 	return (
@@ -23,6 +55,22 @@ function getMessageText(msg: proto.IWebMessageInfo): string {
 
 function getSenderId(msg: proto.IWebMessageInfo): string {
 	return normalizeJid(msg.key?.participant || msg.key?.remoteJid);
+}
+
+// Wrapper de sock.sendMessage que además cuenta el envío para el rate limit
+// global (botSuperoLimiteGlobal) — todo lo que el bot manda tiene que pasar
+// por acá para que ese conteo sea real.
+type MensajeContenido = Parameters<WASocket["sendMessage"]>[1];
+type MensajeOpciones = Parameters<WASocket["sendMessage"]>[2];
+
+async function enviarMensaje(
+	sock: WASocket,
+	jid: string,
+	content: MensajeContenido,
+	options?: MensajeOpciones
+): Promise<void> {
+	await sock.sendMessage(jid, content, options);
+	registrarMensajeEnviado();
 }
 
 export async function registerSocketEvents(
@@ -43,15 +91,44 @@ export async function registerSocketEvents(
 
 		if (connection === "close") {
 			const code = (lastDisconnect?.error as Boom)?.output?.statusCode;
+			Reconexion.registrar(code != null ? String(code) : "desconocido");
+
 			if (code === DisconnectReason.loggedOut) {
 				console.error("❌ Sesión cerrada desde el celular. Generando nuevo QR...");
 				clearAuthState();
-				await reconnect();
-			} else {
-				console.warn("⚠️ Desconectado, reconectando...");
-				await reconnect();
 			}
+
+			// 401 (loggedOut) y 403 (forbidden) son las señales más cercanas a un ban
+			// que expone Baileys. Nada de reintentar rápido acá: se espera 8hs antes
+			// de volver a golpear los servidores de WhatsApp.
+			if (code === DisconnectReason.loggedOut || code === DisconnectReason.forbidden) {
+				console.error(
+					`🚫 Código ${code} recibido (posible ban/sesión inválida). Esperando 8hs antes de reintentar...`
+				);
+				intentosReconexionFallidos = 0;
+				await sleep(BAN_WAIT_MS);
+				await reconnect();
+				return;
+			}
+
+			const reconexionesHoy = Reconexion.contarUltimas24h();
+			if (reconexionesHoy > DAILY_LIMIT_THRESHOLD) {
+				console.warn(
+					`⚠️ ${reconexionesHoy} reconexiones en las últimas 24hs. Esperando 2hs antes de reintentar...`
+				);
+				await sleep(DAILY_LIMIT_WAIT_MS);
+				await reconnect();
+				return;
+			}
+
+			const delay = calcularDelayReconexion();
+			console.warn(
+				`⚠️ Desconectado (intento ${intentosReconexionFallidos}). Reconectando en ${Math.round(delay / 1000)}s...`
+			);
+			await sleep(delay);
+			await reconnect();
 		} else if (connection === "open") {
+			intentosReconexionFallidos = 0;
 			console.log("🔐 Autenticado con éxito. Bot listo.");
 			await fs.unlink(QR_PATH).catch(() => {});
 		}
@@ -75,7 +152,8 @@ export async function registerSocketEvents(
 				if (remitente?.banned) {
 					if (bodyLower.startsWith("/") || bodyLower.startsWith("top antipala del dia")) {
 						try {
-							await sock.sendMessage(
+							await enviarMensaje(
+								sock,
 								replyJid,
 								{ text: "🚫 Estás baneado y no podés usar el bot." },
 								{ quoted: msg }
@@ -84,6 +162,11 @@ export async function registerSocketEvents(
 							console.error("⚠️ No se pudo avisar el baneo (conexión caída):", sendError);
 						}
 					}
+					continue;
+				}
+
+				if (botSuperoLimiteGlobal()) {
+					console.warn("⚠️ Rate limit global: el bot ya mandó más de 10 mensajes en el último minuto, se ignora este mensaje.");
 					continue;
 				}
 
@@ -106,11 +189,12 @@ export async function registerSocketEvents(
 							await topDiarioCommand(bodyLower, topAntipala);
 							const reply = await topAntipala.getTopAntipala();
 							console.log("📊 Top Antipala del día registrado.");
-							await sock.sendMessage(replyJid, { text: reply }, { quoted: msg });
+							await enviarMensaje(sock, replyJid, { text: reply }, { quoted: msg });
 						}
 					} catch (error: any) {
 						try {
-							await sock.sendMessage(
+							await enviarMensaje(
+								sock,
 								replyJid,
 								{ text: error.message || "❌ Error al procesar el top." },
 								{ quoted: msg }
@@ -124,6 +208,13 @@ export async function registerSocketEvents(
 
 				if (bodyLower.startsWith("/")) {
 					try {
+						if (usuarioExcedeLimite(userId)) {
+							console.warn(`⚠️ Rate limit: ${userId} superó 3 comandos en 10s, se ignora.`);
+							continue;
+						}
+						// Delay aleatorio para no responder a velocidad de máquina.
+						await sleep(delayHumano());
+
 						const commandArgs = bodyLower.trim().split(/\s+/);
 						const command = Commands.resolveAlias(commandArgs[0].slice(1));
 						if (command === "help") {
@@ -152,7 +243,7 @@ export async function registerSocketEvents(
 							} else {
 								helpMessage = await Commands.getInstance().help(userId);
 							}
-							await sock.sendMessage(replyJid, { text: helpMessage }, { quoted: msg });
+							await enviarMensaje(sock, replyJid, { text: helpMessage }, { quoted: msg });
 							continue;
 						}
 						if (Commands.isRegistered(command)) {
@@ -169,13 +260,15 @@ export async function registerSocketEvents(
 							console.log(`${hora} ${userId}${nombreTopero ? ` [${nombreTopero}]` : ""} {${replyJid}}\n🔍 Comando ejecutado: ${command}`);
 							try {
 								if (result.type === "text") {
-									await sock.sendMessage(
+									await enviarMensaje(
+										sock,
 										replyJid,
 										{ text: result.payload },
 										{ quoted: msg }
 									);
 								} else if (result.type === "audio") {
-									await sock.sendMessage(
+									await enviarMensaje(
+										sock,
 										replyJid,
 										{
 											audio: result.payload.buffer,
@@ -185,7 +278,8 @@ export async function registerSocketEvents(
 										{ quoted: msg }
 									);
 								} else if (result.type === "image") {
-									await sock.sendMessage(
+									await enviarMensaje(
+										sock,
 										replyJid,
 										{
 											image: result.payload.buffer,
@@ -204,12 +298,13 @@ export async function registerSocketEvents(
 							if (stats === null) {
 								Commands.exists(command);
 							} else {
-								await sock.sendMessage(replyJid, { text: stats }, { quoted: msg });
+								await enviarMensaje(sock, replyJid, { text: stats }, { quoted: msg });
 							}
 						}
 					} catch (error: any) {
 						try {
-							await sock.sendMessage(
+							await enviarMensaje(
+								sock,
 								replyJid,
 								{ text: error.message || "❌ Error al procesar el comando." },
 								{ quoted: msg }
@@ -223,7 +318,8 @@ export async function registerSocketEvents(
 				console.error("💥 Error no capturado:", error);
 				console.error("Mensaje que causó el error:", body);
 				try {
-					await sock.sendMessage(
+					await enviarMensaje(
+						sock,
 						replyJid,
 						{ text: error.message || "❌ Ocurrió un error inesperado." },
 						{ quoted: msg }

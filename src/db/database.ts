@@ -82,6 +82,11 @@ class DatabaseManager {
 				count INTEGER NOT NULL DEFAULT 0,
 				PRIMARY KEY (jid, group_jid, command)
 			);
+			CREATE TABLE IF NOT EXISTS reconexiones (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+				motivo TEXT
+			);
 		`);
 	}
 
