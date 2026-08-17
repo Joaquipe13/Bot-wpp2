@@ -96,17 +96,22 @@ export async function registerSocketEvents(
 			if (code === DisconnectReason.loggedOut) {
 				console.error("❌ Sesión cerrada desde el celular. Generando nuevo QR...");
 				clearAuthState();
+				intentosReconexionFallidos = 0;
+				await reconnect();
+				return;
 			}
 
-			// 401 (loggedOut) y 403 (forbidden) son las señales más cercanas a un ban
-			// que expone Baileys. Nada de reintentar rápido acá: se espera 8hs antes
-			// de volver a golpear los servidores de WhatsApp.
-			if (code === DisconnectReason.loggedOut || code === DisconnectReason.forbidden) {
+			// 403 (forbidden) es la señal más cercana a bloqueo/ban que expone Baileys.
+			// Nada de reintentar rápido acá: se espera 8hs antes de volver a golpear
+			// los servidores de WhatsApp.
+			if (code === DisconnectReason.forbidden) {
 				console.error(
 					`🚫 Código ${code} recibido (posible ban/sesión inválida). Esperando 8hs antes de reintentar...`
 				);
 				intentosReconexionFallidos = 0;
 				await sleep(BAN_WAIT_MS);
+				clearAuthState();
+				console.warn("🔄 Reiniciando autenticación: se solicitará un nuevo QR.");
 				await reconnect();
 				return;
 			}
@@ -117,6 +122,8 @@ export async function registerSocketEvents(
 					`⚠️ ${reconexionesHoy} reconexiones en las últimas 24hs. Esperando 2hs antes de reintentar...`
 				);
 				await sleep(DAILY_LIMIT_WAIT_MS);
+				clearAuthState();
+				console.warn("🔄 Reiniciando autenticación tras exceso de reconexiones: se solicitará un nuevo QR.");
 				await reconnect();
 				return;
 			}
