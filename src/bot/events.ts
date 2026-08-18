@@ -1,43 +1,22 @@
 import { WASocket, proto, DisconnectReason } from "@whiskeysockets/baileys";
-import { Boom } from "@hapi/boom";
 import qrcode from "qrcode-terminal";
 import QRCode from "qrcode";
 import fs from "fs/promises";
 import path from "path";
 import { topDiarioCommand, helpAudioCommand, helpImagenCommand, statsToperoCommand } from "../commands";
-import { TopAntipala, Commands, Topero, ComandoUso, Reconexion } from "../classes";
+import { TopAntipala, Commands, Topero, ComandoUso } from "../classes";
 import { handleCommand, normalizeJid, removeAccents } from "../utils";
 import { DB_PATH } from "../db/database";
-import { usuarioExcedeLimite, botSuperoLimiteGlobal, registrarMensajeEnviado, delayHumano } from "./rateLimiter";
 
 const topAntipala = TopAntipala.getInstance();
 const QR_PATH = path.join(path.dirname(DB_PATH), "qr.png");
 
-// Backoff de reconexión: WhatsApp banea temporalmente cuentas que reconectan
-// en loop instantáneo al perder la conexión, así que antes de cada intento se
-// espera cada vez más. Este contador vive a nivel de módulo (no dentro de
-// registerSocketEvents) para que persista entre sockets sucesivos dentro del
-// mismo proceso, ya que se vuelve a llamar en cada reconexión.
-const RECONNECT_BASE_DELAY_MS = 5_000; // 5s en el primer intento
-const RECONNECT_MAX_DELAY_MS = 5 * 60_000; // tope de 5 min mientras se duplica
-const RECONNECT_LONG_DELAY_MS = 30 * 60_000; // 30 min pasados los 10 intentos
-const RECONNECT_LONG_DELAY_THRESHOLD = 10;
-
-const BAN_WAIT_MS = 8 * 60 * 60_000; // 8h si WhatsApp devuelve un código de ban
-const DAILY_LIMIT_WAIT_MS = 2 * 60 * 60_000; // 2h si ya hubo demasiadas reconexiones hoy
-const DAILY_LIMIT_THRESHOLD = 5; // más de esto en 24hs dispara el modo espera
-
-let intentosReconexionFallidos = 0;
-
-function calcularDelayReconexion(): number {
-	intentosReconexionFallidos++;
-	if (intentosReconexionFallidos > RECONNECT_LONG_DELAY_THRESHOLD) {
-		return RECONNECT_LONG_DELAY_MS;
-	}
-	return Math.min(
-		RECONNECT_BASE_DELAY_MS * 2 ** (intentosReconexionFallidos - 1),
-		RECONNECT_MAX_DELAY_MS
-	);
+function getDisconnectCode(error: unknown): number | undefined {
+	if (error == null || typeof error !== "object") return undefined;
+	const output = (error as { output?: unknown }).output;
+	if (output == null || typeof output !== "object") return undefined;
+	const statusCode = (output as { statusCode?: unknown }).statusCode;
+	return typeof statusCode === "number" ? statusCode : undefined;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -70,7 +49,6 @@ async function enviarMensaje(
 	options?: MensajeOpciones
 ): Promise<void> {
 	await sock.sendMessage(jid, content, options);
-	registrarMensajeEnviado();
 }
 
 export async function registerSocketEvents(
@@ -90,52 +68,15 @@ export async function registerSocketEvents(
 		}
 
 		if (connection === "close") {
-			const code = (lastDisconnect?.error as Boom)?.output?.statusCode;
-			Reconexion.registrar(code != null ? String(code) : "desconocido");
-
+			const code = getDisconnectCode(lastDisconnect?.error);
 			if (code === DisconnectReason.loggedOut) {
-				console.error("❌ Sesión cerrada desde el celular. Generando nuevo QR...");
+				console.error("❌ Sesión cerrada. Se requiere reautenticación.");
 				clearAuthState();
-				intentosReconexionFallidos = 0;
+			} else {
+				console.warn(`⚠️ Conexión cerrada (código: ${code}). Intentando reconectar...`);
 				await reconnect();
-				return;
 			}
-
-			// 403 (forbidden) es la señal más cercana a bloqueo/ban que expone Baileys.
-			// Nada de reintentar rápido acá: se espera 8hs antes de volver a golpear
-			// los servidores de WhatsApp.
-			if (code === DisconnectReason.forbidden) {
-				console.error(
-					`🚫 Código ${code} recibido (posible ban/sesión inválida). Esperando 8hs antes de reintentar...`
-				);
-				intentosReconexionFallidos = 0;
-				await sleep(BAN_WAIT_MS);
-				clearAuthState();
-				console.warn("🔄 Reiniciando autenticación: se solicitará un nuevo QR.");
-				await reconnect();
-				return;
-			}
-
-			const reconexionesHoy = Reconexion.contarUltimas24h();
-			if (reconexionesHoy > DAILY_LIMIT_THRESHOLD) {
-				console.warn(
-					`⚠️ ${reconexionesHoy} reconexiones en las últimas 24hs. Esperando 2hs antes de reintentar...`
-				);
-				await sleep(DAILY_LIMIT_WAIT_MS);
-				clearAuthState();
-				console.warn("🔄 Reiniciando autenticación tras exceso de reconexiones: se solicitará un nuevo QR.");
-				await reconnect();
-				return;
-			}
-
-			const delay = calcularDelayReconexion();
-			console.warn(
-				`⚠️ Desconectado (intento ${intentosReconexionFallidos}). Reconectando en ${Math.round(delay / 1000)}s...`
-			);
-			await sleep(delay);
-			await reconnect();
 		} else if (connection === "open") {
-			intentosReconexionFallidos = 0;
 			console.log("🔐 Autenticado con éxito. Bot listo.");
 			await fs.unlink(QR_PATH).catch(() => {});
 		}
@@ -172,11 +113,6 @@ export async function registerSocketEvents(
 							console.error("⚠️ No se pudo avisar el baneo (conexión caída):", sendError);
 						}
 					}
-					continue;
-				}
-
-				if (botSuperoLimiteGlobal()) {
-					console.warn("⚠️ Rate limit global: el bot ya mandó más de 10 mensajes en el último minuto, se ignora este mensaje.");
 					continue;
 				}
 
@@ -218,13 +154,7 @@ export async function registerSocketEvents(
 
 				if (bodyLower.startsWith("/")) {
 					try {
-						if (usuarioExcedeLimite(userId)) {
-							console.warn(`⚠️ Rate limit: ${userId} superó 3 comandos en 10s, se ignora.`);
-							continue;
-						}
-						// Delay aleatorio para no responder a velocidad de máquina.
-						await sleep(delayHumano());
-
+						
 						const commandArgs = bodyLower.trim().split(/\s+/);
 						const command = Commands.resolveAlias(commandArgs[0].slice(1));
 						if (command === "help") {
