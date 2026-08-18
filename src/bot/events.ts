@@ -18,17 +18,17 @@ const QR_PATH = path.join(path.dirname(DB_PATH), "qr.png");
 // espera cada vez más. Este contador vive a nivel de módulo (no dentro de
 // registerSocketEvents) para que persista entre sockets sucesivos dentro del
 // mismo proceso, ya que se vuelve a llamar en cada reconexión.
-const RECONNECT_BASE_DELAY_MS = 45_000; // 45s en el primer intento
-const RECONNECT_STEP_DELAY_MS = 45_000; // +45s por intento fallido
-const RECONNECT_MAX_DELAY_MS = 30 * 60_000; // tope de 30 min
-const RECONNECT_LONG_DELAY_MS = 45 * 60_000; // 45 min tras muchísimos intentos
+const RECONNECT_BASE_DELAY_MS = 15_000; // 15s en el primer intento
+const RECONNECT_STEP_DELAY_MS = 15_000; // +15s por intento fallido
+const RECONNECT_MAX_DELAY_MS = 15 * 60_000; // tope de 15 min
+const RECONNECT_LONG_DELAY_MS = 20 * 60_000; // 20 min tras muchísimos intentos
 const RECONNECT_LONG_DELAY_THRESHOLD = 20;
 
 const BAN_WAIT_MS = 8 * 60 * 60_000; // 8h si WhatsApp devuelve un código de ban
 const DAILY_LIMIT_WAIT_MS = 2 * 60 * 60_000; // 2h si ya hubo demasiadas reconexiones hoy
 const DAILY_LIMIT_THRESHOLD = 5; // más de esto en 24hs dispara el modo espera
 const DAILY_LIMIT_RETRY_ATTEMPTS = 5;
-const DAILY_LIMIT_RETRY_DELAY_MS = 5 * 60_000; // 5 min entre intentos post-espera
+const DAILY_LIMIT_RETRY_DELAY_MS = 90_000; // 1m30s entre intentos post-espera
 
 let intentosReconexionFallidos = 0;
 let ultimaConexionExitosaMs = 0;
