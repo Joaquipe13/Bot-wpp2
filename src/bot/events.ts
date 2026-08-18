@@ -18,30 +18,123 @@ const QR_PATH = path.join(path.dirname(DB_PATH), "qr.png");
 // espera cada vez más. Este contador vive a nivel de módulo (no dentro de
 // registerSocketEvents) para que persista entre sockets sucesivos dentro del
 // mismo proceso, ya que se vuelve a llamar en cada reconexión.
-const RECONNECT_BASE_DELAY_MS = 5_000; // 5s en el primer intento
-const RECONNECT_MAX_DELAY_MS = 5 * 60_000; // tope de 5 min mientras se duplica
-const RECONNECT_LONG_DELAY_MS = 30 * 60_000; // 30 min pasados los 10 intentos
-const RECONNECT_LONG_DELAY_THRESHOLD = 10;
+const RECONNECT_BASE_DELAY_MS = 15_000; // 15s en el primer intento
+const RECONNECT_STEP_DELAY_MS = 15_000; // +15s por intento fallido
+const RECONNECT_MAX_DELAY_MS = 15 * 60_000; // tope de 15 min
+const RECONNECT_LONG_DELAY_MS = 20 * 60_000; // 20 min tras muchísimos intentos
+const RECONNECT_LONG_DELAY_THRESHOLD = 20;
 
 const BAN_WAIT_MS = 8 * 60 * 60_000; // 8h si WhatsApp devuelve un código de ban
 const DAILY_LIMIT_WAIT_MS = 2 * 60 * 60_000; // 2h si ya hubo demasiadas reconexiones hoy
 const DAILY_LIMIT_THRESHOLD = 5; // más de esto en 24hs dispara el modo espera
+const DAILY_LIMIT_RETRY_ATTEMPTS = 5;
+const DAILY_LIMIT_RETRY_DELAY_MS = 90_000; // 1m30s entre intentos post-espera
 
 let intentosReconexionFallidos = 0;
+let ultimaConexionExitosaMs = 0;
 
 function calcularDelayReconexion(): number {
 	intentosReconexionFallidos++;
 	if (intentosReconexionFallidos > RECONNECT_LONG_DELAY_THRESHOLD) {
 		return RECONNECT_LONG_DELAY_MS;
 	}
-	return Math.min(
-		RECONNECT_BASE_DELAY_MS * 2 ** (intentosReconexionFallidos - 1),
-		RECONNECT_MAX_DELAY_MS
-	);
+	return Math.min(RECONNECT_BASE_DELAY_MS + RECONNECT_STEP_DELAY_MS * (intentosReconexionFallidos - 1), RECONNECT_MAX_DELAY_MS);
 }
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function readStringField(obj: Record<string, unknown> | undefined, key: string): string | undefined {
+	const value = obj?.[key];
+	return typeof value === "string" ? value : undefined;
+}
+
+function readObjectField(obj: Record<string, unknown> | undefined, key: string): Record<string, unknown> | undefined {
+	const value = obj?.[key];
+	return value != null && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
+}
+
+type DisconnectDiagnostics = {
+	code?: number;
+	motivo: string;
+	esFalloConexion: boolean;
+	detalle: string;
+};
+
+const NETWORK_ERRNOS = new Set([
+	"ETIMEDOUT",
+	"ECONNRESET",
+	"ECONNABORTED",
+	"ENETUNREACH",
+	"EHOSTUNREACH",
+	"EAI_AGAIN",
+	"ENOTFOUND",
+]);
+
+function diagnosticarDesconexion(error: unknown): DisconnectDiagnostics {
+	const boom = error as Boom | undefined;
+	const code = boom?.output?.statusCode;
+	const root = error != null && typeof error === "object" ? (error as Record<string, unknown>) : undefined;
+	const cause = readObjectField(root, "cause");
+
+	const mensaje = error instanceof Error ? error.message : readStringField(root, "message");
+	const errno = readStringField(root, "code");
+	const causaMensaje = readStringField(cause, "message");
+	const causaErrno = readStringField(cause, "code");
+
+	const texto = [mensaje, causaMensaje, errno, causaErrno, code != null ? String(code) : ""].join(" ").toLowerCase();
+
+	const esFalloConexion =
+		(code === 408 || code === 504) ||
+		(errno != null && NETWORK_ERRNOS.has(errno)) ||
+		(causaErrno != null && NETWORK_ERRNOS.has(causaErrno)) ||
+		/(timed?\s*out|connection\s+(closed|lost|reset)|socket\s+closed|network|internet)/i.test(texto);
+
+	let motivo = "desconocido";
+	if (code != null) {
+		motivo = `code:${code}`;
+	} else if (errno != null) {
+		motivo = `errno:${errno}`;
+	} else if (causaErrno != null) {
+		motivo = `errno:${causaErrno}`;
+	}
+	if (esFalloConexion) {
+		motivo = `conexion:${motivo}`;
+	}
+
+	const detalle = [
+		code != null ? `code=${code}` : null,
+		errno != null ? `errno=${errno}` : null,
+		causaErrno != null ? `causeErrno=${causaErrno}` : null,
+		mensaje != null ? `msg="${mensaje}"` : null,
+		causaMensaje != null ? `causeMsg="${causaMensaje}"` : null,
+	]
+		.filter(Boolean)
+		.join(" | ");
+
+	return { code, motivo, esFalloConexion, detalle: detalle || "sin detalle" };
+}
+
+async function reintentarReconexionPostEsperaDiaria(reconnect: () => Promise<void>): Promise<void> {
+	const inicioIntentosMs = Date.now();
+	for (let intento = 1; intento <= DAILY_LIMIT_RETRY_ATTEMPTS; intento++) {
+		try {
+			console.warn(`🔁 Reintento post-espera diaria ${intento}/${DAILY_LIMIT_RETRY_ATTEMPTS}...`);
+			await reconnect();
+		} catch (error) {
+			console.error(`⚠️ Falló el reintento post-espera diaria ${intento}/${DAILY_LIMIT_RETRY_ATTEMPTS}:`, error);
+		}
+
+		if (ultimaConexionExitosaMs >= inicioIntentosMs) {
+			console.log("✅ Reconexión recuperada durante los reintentos post-espera diaria.");
+			return;
+		}
+
+		if (intento < DAILY_LIMIT_RETRY_ATTEMPTS) {
+			await sleep(DAILY_LIMIT_RETRY_DELAY_MS);
+		}
+	}
 }
 
 function getMessageText(msg: proto.IWebMessageInfo): string {
@@ -90,8 +183,10 @@ export async function registerSocketEvents(
 		}
 
 		if (connection === "close") {
-			const code = (lastDisconnect?.error as Boom)?.output?.statusCode;
-			Reconexion.registrar(code != null ? String(code) : "desconocido");
+			const diagnostico = diagnosticarDesconexion(lastDisconnect?.error);
+			const { code, esFalloConexion } = diagnostico;
+			Reconexion.registrar(diagnostico.motivo);
+			console.warn(`⚠️ Cierre de conexión detectado (${esFalloConexion ? "fallo de red" : "otro motivo"}): ${diagnostico.detalle}`);
 
 			if (code === DisconnectReason.loggedOut) {
 				console.error("❌ Sesión cerrada desde el celular. Generando nuevo QR...");
@@ -117,15 +212,20 @@ export async function registerSocketEvents(
 			}
 
 			const reconexionesHoy = Reconexion.contarUltimas24h();
-			if (reconexionesHoy > DAILY_LIMIT_THRESHOLD) {
+			if (reconexionesHoy > DAILY_LIMIT_THRESHOLD && !esFalloConexion) {
 				console.warn(
 					`⚠️ ${reconexionesHoy} reconexiones en las últimas 24hs. Esperando 2hs antes de reintentar...`
 				);
 				await sleep(DAILY_LIMIT_WAIT_MS);
 				clearAuthState();
-				console.warn("🔄 Reiniciando autenticación tras exceso de reconexiones: se solicitará un nuevo QR.");
-				await reconnect();
+				console.warn(
+					"🔄 Reiniciando autenticación tras exceso de reconexiones: se solicitará un nuevo QR y se harán 5 intentos espaciados."
+				);
+				await reintentarReconexionPostEsperaDiaria(reconnect);
 				return;
+			}
+			if (reconexionesHoy > DAILY_LIMIT_THRESHOLD && esFalloConexion) {
+				console.warn(`⚠️ ${reconexionesHoy} reconexiones en 24hs por red inestable: no se limpia auth y se sigue con backoff progresivo.`);
 			}
 
 			const delay = calcularDelayReconexion();
@@ -136,6 +236,7 @@ export async function registerSocketEvents(
 			await reconnect();
 		} else if (connection === "open") {
 			intentosReconexionFallidos = 0;
+			ultimaConexionExitosaMs = Date.now();
 			console.log("🔐 Autenticado con éxito. Bot listo.");
 			await fs.unlink(QR_PATH).catch(() => {});
 		}
