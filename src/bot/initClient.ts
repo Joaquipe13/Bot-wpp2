@@ -19,6 +19,7 @@ export async function createSocket(): Promise<{
 		auth: state,
 		logger: P({ level: "silent" }),
 		browser: ["Bot-wpp", "Chrome", "1.0.0"],
+		connectTimeoutMs: 240_000,
 	});
 
 	sock.ev.on("creds.update", saveCreds);
