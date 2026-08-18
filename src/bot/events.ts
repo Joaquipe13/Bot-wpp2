@@ -1,11 +1,10 @@
 import { WASocket, proto, DisconnectReason } from "@whiskeysockets/baileys";
-import { Boom } from "@hapi/boom";
 import qrcode from "qrcode-terminal";
 import QRCode from "qrcode";
 import fs from "fs/promises";
 import path from "path";
 import { topDiarioCommand, helpAudioCommand, helpImagenCommand, statsToperoCommand } from "../commands";
-import { TopAntipala, Commands, Topero, ComandoUso, Reconexion } from "../classes";
+import { TopAntipala, Commands, Topero, ComandoUso } from "../classes";
 import { handleCommand, normalizeJid, removeAccents } from "../utils";
 import { DB_PATH } from "../db/database";
 import { usuarioExcedeLimite, botSuperoLimiteGlobal, registrarMensajeEnviado, delayHumano } from "./rateLimiter";
@@ -13,136 +12,16 @@ import { usuarioExcedeLimite, botSuperoLimiteGlobal, registrarMensajeEnviado, de
 const topAntipala = TopAntipala.getInstance();
 const QR_PATH = path.join(path.dirname(DB_PATH), "qr.png");
 
-// Backoff de reconexión: WhatsApp banea temporalmente cuentas que reconectan
-// en loop instantáneo al perder la conexión, así que antes de cada intento se
-// espera cada vez más. Este contador vive a nivel de módulo (no dentro de
-// registerSocketEvents) para que persista entre sockets sucesivos dentro del
-// mismo proceso, ya que se vuelve a llamar en cada reconexión.
-const RECONNECT_BASE_DELAY_MS = 45_000; // 45s en el primer intento
-const RECONNECT_STEP_DELAY_MS = 45_000; // +45s por intento fallido
-const RECONNECT_MAX_DELAY_MS = 30 * 60_000; // tope de 30 min
-const RECONNECT_LONG_DELAY_MS = 45 * 60_000; // 45 min tras muchísimos intentos
-const RECONNECT_LONG_DELAY_THRESHOLD = 20;
-
-const BAN_WAIT_MS = 8 * 60 * 60_000; // 8h si WhatsApp devuelve un código de ban
-const DAILY_LIMIT_WAIT_MS = 2 * 60 * 60_000; // 2h si ya hubo demasiadas reconexiones hoy
-const DAILY_LIMIT_THRESHOLD = 5; // más de esto en 24hs dispara el modo espera
-const DAILY_LIMIT_RETRY_ATTEMPTS = 5;
-const DAILY_LIMIT_RETRY_DELAY_MS = 5 * 60_000; // 5 min entre intentos post-espera
-const RESTART_REQUIRED_RETRY_DELAY_MS = 30_000; // 30s para 515 (restart required)
-
-let intentosReconexionFallidos = 0;
-let ultimaConexionExitosaMs = 0;
-
-function calcularDelayReconexion(): number {
-	intentosReconexionFallidos++;
-	if (intentosReconexionFallidos > RECONNECT_LONG_DELAY_THRESHOLD) {
-		return RECONNECT_LONG_DELAY_MS;
-	}
-	return Math.min(RECONNECT_BASE_DELAY_MS + RECONNECT_STEP_DELAY_MS * (intentosReconexionFallidos - 1), RECONNECT_MAX_DELAY_MS);
+function getDisconnectCode(error: unknown): number | undefined {
+	if (error == null || typeof error !== "object") return undefined;
+	const output = (error as { output?: unknown }).output;
+	if (output == null || typeof output !== "object") return undefined;
+	const statusCode = (output as { statusCode?: unknown }).statusCode;
+	return typeof statusCode === "number" ? statusCode : undefined;
 }
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function readStringField(obj: Record<string, unknown> | undefined, key: string): string | undefined {
-	const value = obj?.[key];
-	return typeof value === "string" ? value : undefined;
-}
-
-function readObjectField(obj: Record<string, unknown> | undefined, key: string): Record<string, unknown> | undefined {
-	const value = obj?.[key];
-	return value != null && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
-}
-
-type DisconnectDiagnostics = {
-	code?: number;
-	motivo: string;
-	esFalloConexion: boolean;
-	esReinicioRequerido: boolean;
-	detalle: string;
-};
-
-const NETWORK_ERRNOS = new Set([
-	"ETIMEDOUT",
-	"ECONNRESET",
-	"ECONNABORTED",
-	"ENETUNREACH",
-	"EHOSTUNREACH",
-	"EAI_AGAIN",
-	"ENOTFOUND",
-]);
-
-function diagnosticarDesconexion(error: unknown): DisconnectDiagnostics {
-	const boom = error as Boom | undefined;
-	const code = boom?.output?.statusCode;
-	const root = error != null && typeof error === "object" ? (error as Record<string, unknown>) : undefined;
-	const cause = readObjectField(root, "cause");
-
-	const mensaje = error instanceof Error ? error.message : readStringField(root, "message");
-	const errno = readStringField(root, "code");
-	const causaMensaje = readStringField(cause, "message");
-	const causaErrno = readStringField(cause, "code");
-
-	const texto = [mensaje, causaMensaje, errno, causaErrno, code != null ? String(code) : ""].join(" ").toLowerCase();
-
-	const esFalloConexion =
-		(code === 408 || code === 504) ||
-		(errno != null && NETWORK_ERRNOS.has(errno)) ||
-		(causaErrno != null && NETWORK_ERRNOS.has(causaErrno)) ||
-		/(timed?\s*out|connection\s+(closed|lost|reset)|socket\s+closed|network|internet)/i.test(texto);
-	const esReinicioRequerido =
-		code === DisconnectReason.restartRequired ||
-		/restart required|stream errored/i.test(texto);
-
-	let motivo = "desconocido";
-	if (code != null) {
-		motivo = `code:${code}`;
-	} else if (errno != null) {
-		motivo = `errno:${errno}`;
-	} else if (causaErrno != null) {
-		motivo = `errno:${causaErrno}`;
-	}
-	if (esFalloConexion) {
-		motivo = `conexion:${motivo}`;
-	}
-	if (esReinicioRequerido) {
-		motivo = `transitorio:${motivo}`;
-	}
-
-	const detalle = [
-		code != null ? `code=${code}` : null,
-		errno != null ? `errno=${errno}` : null,
-		causaErrno != null ? `causeErrno=${causaErrno}` : null,
-		mensaje != null ? `msg="${mensaje}"` : null,
-		causaMensaje != null ? `causeMsg="${causaMensaje}"` : null,
-	]
-		.filter(Boolean)
-		.join(" | ");
-
-	return { code, motivo, esFalloConexion, esReinicioRequerido, detalle: detalle || "sin detalle" };
-}
-
-async function reintentarReconexionPostEsperaDiaria(reconnect: () => Promise<void>): Promise<void> {
-	const inicioIntentosMs = Date.now();
-	for (let intento = 1; intento <= DAILY_LIMIT_RETRY_ATTEMPTS; intento++) {
-		try {
-			console.warn(`🔁 Reintento post-espera diaria ${intento}/${DAILY_LIMIT_RETRY_ATTEMPTS}...`);
-			await reconnect();
-		} catch (error) {
-			console.error(`⚠️ Falló el reintento post-espera diaria ${intento}/${DAILY_LIMIT_RETRY_ATTEMPTS}:`, error);
-		}
-
-		if (ultimaConexionExitosaMs >= inicioIntentosMs) {
-			console.log("✅ Reconexión recuperada durante los reintentos post-espera diaria.");
-			return;
-		}
-
-		if (intento < DAILY_LIMIT_RETRY_ATTEMPTS) {
-			await sleep(DAILY_LIMIT_RETRY_DELAY_MS);
-		}
-	}
 }
 
 function getMessageText(msg: proto.IWebMessageInfo): string {
