@@ -67,7 +67,12 @@ export function parseTop(body: string): { nombres: string[]; date_top: Date } {
 
 	const nombres: string[] = lines
 		.slice(1)
-		.map((line) => line.replace(/^\d+\s+/, "").trim())
+		.map((line) => line
+			.replace(/^\d+\s+/, "")
+			.trim()
+			.normalize("NFD")
+			.replace(/[\u0300-\u0302\u0304-\u036f]/g, "")
+			)
 		.filter((nombre) => nombre.length > 0);
 
 	return { nombres, date_top };
